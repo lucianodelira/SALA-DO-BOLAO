@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Sala de Participantes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #0f0f0f;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+.box {
+  background: #1c1c1c;
+  padding: 30px;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+input, button {
+  width: 100%;
+  padding: 14px;
+  margin: 10px 0;
+  border-radius: 8px;
+  border: none;
+}
+input { background: #2a2a2a; color: white; }
+button {
+  background: #00c853;
+  font-weight: bold;
+  cursor: pointer;
+}
+.hidden { display: none; }
+</style>
+</head>
+<body>
+
+<div class="box" id="loginBox">
+  <h2>Entrar na Sala</h2>
+  <input id="nome" placeholder="Seu nome">
+  <input id="telefone" placeholder="Seu telefone">
+  <button onclick="login()">Entrar</button>
+  <div id="msg"></div>
+</div>
+
+<div class="box hidden" id="salaBox">
+  <h2>Bem-vindo à Sala</h2>
+  <p><strong>ID:</strong> <span id="userId"></span></p>
+  <p><strong>Nome:</strong> <span id="userNome"></span></p>
+  <button onclick="logout()">Sair</button>
+</div>
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec';
+
+function login() {
+  const nome = document.getElementById('nome').value.trim();
+  const telefone = document.getElementById('telefone').value.trim();
+
+  if (!nome || !telefone) {
+    document.getElementById('msg').innerText = 'Preencha todos os campos';
+    return;
+  }
+
+  fetch(`${API_URL}?action=loginSala&nome=${encodeURIComponent(nome)}&telefone=${encodeURIComponent(telefone)}`)
+    .then(r => r.json())
+    .then(res => {
+      if (res.success) {
+        sessionStorage.setItem('userId', res.id);
+        sessionStorage.setItem('userNome', res.nome);
+        entrarSala();
+      } else {
+        document.getElementById('msg').innerText = res.message;
+      }
+    })
+    .catch(() => {
+      document.getElementById('msg').innerText = 'Erro de conexão';
+    });
+}
+
+function entrarSala() {
+  document.getElementById('loginBox').classList.add('hidden');
+  document.getElementById('salaBox').classList.remove('hidden');
+
+  document.getElementById('userId').innerText =
+    sessionStorage.getItem('userId');
+
+  document.getElementById('userNome').innerText =
+    sessionStorage.getItem('userNome');
+}
+
+function logout() {
+  sessionStorage.clear();
+  location.reload();
+}
+
+if (sessionStorage.getItem('userId')) {
+  entrarSala();
+}
+</script>
+
+</body>
+</html>
