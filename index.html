@@ -17,10 +17,10 @@ body {
 }
 .box {
   background: #1c1c1c;
-  padding: 30px;
+  padding: 25px;
   border-radius: 12px;
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
   text-align: center;
 }
 input, button {
@@ -30,27 +30,29 @@ input, button {
   border-radius: 8px;
   border: none;
 }
-input {
-  background: #2a2a2a;
-  color: white;
-}
+input { background: #2a2a2a; color: white; }
 button {
   background: #00c853;
   font-weight: bold;
   cursor: pointer;
 }
-.hidden {
-  display: none;
+.hidden { display: none; }
+
+.online-box {
+  background: #111;
+  margin-top: 15px;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 14px;
 }
-#msg {
-  margin-top: 10px;
-  color: #ff5252;
+.online-box span {
+  display: block;
+  color: #00e676;
 }
 </style>
 </head>
 <body>
 
-<!-- LOGIN -->
 <div class="box" id="loginBox">
   <h2>Entrar na Sala</h2>
   <input id="nome" placeholder="Seu nome">
@@ -59,98 +61,97 @@ button {
   <div id="msg"></div>
 </div>
 
-<!-- SALA -->
 <div class="box hidden" id="salaBox">
-  <h2>Bem-vindo à Sala</h2>
+  <h3>Bem-vindo</h3>
   <p><strong>ID:</strong> <span id="userId"></span></p>
   <p><strong>Nome:</strong> <span id="userNome"></span></p>
+
+  <div class="online-box">
+    <strong>Online agora:</strong>
+    <div id="listaOnline"></div>
+  </div>
+
   <button onclick="logout()">Sair</button>
 </div>
 
 <script>
 const API_URL = 'https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec';
+let monitor = null;
+let onlineLoop = null;
 
-let monitorInterval = null;
-
-/* ================= LOGIN ================= */
 function login() {
-  const nome = document.getElementById('nome').value.trim();
-  const telefone = document.getElementById('telefone').value.trim();
-  const msg = document.getElementById('msg');
-
+  const nome = nomeInput.value.trim();
+  const telefone = telefoneInput.value.trim();
   msg.innerText = '';
-
-  if (!nome || !telefone) {
-    msg.innerText = 'Preencha todos os campos';
-    return;
-  }
 
   fetch(`${API_URL}?action=loginSala&nome=${encodeURIComponent(nome)}&telefone=${encodeURIComponent(telefone)}`)
     .then(r => r.json())
     .then(res => {
-      if (res.success) {
-        sessionStorage.setItem('userId', res.id);
-        sessionStorage.setItem('userNome', res.nome);
-        entrarSala();
-      } else {
-        msg.innerText = res.message;
+      if (!res.success) {
+        msg.innerText = res.message || 'Acesso negado';
+        return;
       }
-    })
-    .catch(() => {
-      msg.innerText = 'Erro de conexão com o servidor';
+
+      sessionStorage.setItem('userId', res.id);
+      sessionStorage.setItem('userNome', res.nome);
+      entrarSala();
     });
 }
 
-/* ================= ENTRAR NA SALA ================= */
 function entrarSala() {
-  document.getElementById('loginBox').classList.add('hidden');
-  document.getElementById('salaBox').classList.remove('hidden');
+  loginBox.classList.add('hidden');
+  salaBox.classList.remove('hidden');
 
-  document.getElementById('userId').innerText =
-    sessionStorage.getItem('userId');
+  userId.innerText = sessionStorage.getItem('userId');
+  userNome.innerText = sessionStorage.getItem('userNome');
 
-  document.getElementById('userNome').innerText =
-    sessionStorage.getItem('userNome');
-
-  iniciarMonitoramento();
+  manterOnline();
+  iniciarMonitor();
+  atualizarOnline();
 }
 
-/* ================= MONITORAMENTO EM TEMPO REAL ================= */
-function iniciarMonitoramento() {
-  if (monitorInterval) clearInterval(monitorInterval);
+function manterOnline() {
+  fetch(`${API_URL}?action=manterOnline&id=${userId.innerText}&nome=${encodeURIComponent(userNome.innerText)}`);
+}
 
-  monitorInterval = setInterval(() => {
-    const id = sessionStorage.getItem('userId');
-    if (!id) return;
-
-    fetch(`${API_URL}?action=verificarStatus&id=${encodeURIComponent(id)}`)
+function atualizarOnline() {
+  onlineLoop = setInterval(() => {
+    manterOnline();
+    fetch(`${API_URL}?action=listarOnline`)
       .then(r => r.json())
       .then(res => {
-        if (!res.ativo) {
-          derrubarUsuario();
-        }
-      })
-      .catch(() => {});
-  }, 5000); // verifica a cada 5 segundos
+        listaOnline.innerHTML = '';
+        res.online.forEach(n => {
+          listaOnline.innerHTML += `<span>• ${n}</span>`;
+        });
+      });
+  }, 5000);
 }
 
-/* ================= DERRUBAR USUÁRIO ================= */
-function derrubarUsuario() {
-  clearInterval(monitorInterval);
-  sessionStorage.clear();
+function iniciarMonitor() {
+  monitor = setInterval(() => {
+    fetch(`${API_URL}?action=verificarStatus&id=${userId.innerText}`)
+      .then(r => r.json())
+      .then(res => {
+        if (!res.ativo) derrubar();
+      });
+  }, 5000);
+}
 
-  alert('Seu acesso foi encerrado. Você foi removido da sala.');
+function derrubar() {
+  clearInterval(monitor);
+  clearInterval(onlineLoop);
+  sessionStorage.clear();
+  alert('Você foi removido da sala');
   location.reload();
 }
 
-/* ================= LOGOUT ================= */
 function logout() {
-  clearInterval(monitorInterval);
+  fetch(`${API_URL}?action=sairSala&id=${userId.innerText}`);
   sessionStorage.clear();
   location.reload();
 }
 
-/* ================= AUTO-LOGIN ================= */
 if (sessionStorage.getItem('userId')) {
   entrarSala();
 }
