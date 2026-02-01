@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Bolão Loteria Federal</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+  margin:0;
+  font-family:'Segoe UI',Arial,sans-serif;
+  background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+  color:#fff;
+}
+.hidden{display:none}
+.container{
+  max-width:380px;
+  margin:40px auto;
+  background:#111;
+  padding:22px;
+  border-radius:14px;
+  text-align:center;
+}
+.sala{
+  max-width:900px;
+  margin:auto;
+  padding:20px;
+}
+input,button{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border-radius:8px;
+  border:none;
+  font-size:15px;
+}
+input{background:#1e1e1e;color:#fff}
+button{background:#00e676;color:#000;font-weight:bold;cursor:pointer}
+.status{margin-top:10px}
+.qr img{width:220px;margin-top:10px}
+.pix-box{display:flex;gap:6px;margin-top:8px}
+.pix-box input{flex:1;background:#1e1e1e;color:#0f0;font-size:13px}
+.card{
+  background:#121212;
+  border-radius:12px;
+  padding:16px;
+  margin-bottom:15px;
+}
+ul{padding:0;list-style:none}
+ul li{
+  background:#1e1e1e;
+  padding:8px;
+  border-radius:6px;
+  margin-bottom:6px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN / PIX -->
+<div class="container" id="loginArea">
+  <h2>🎟️ Bolão Loteria Federal</h2>
+  <input id="nome" placeholder="Seu nome completo">
+  <input id="telefone" placeholder="Telefone / WhatsApp">
+  <button onclick="gerarPix()">GERAR PIX</button>
+  <div class="status" id="status"></div>
+  <div class="qr" id="qr"></div>
+</div>
+
+<!-- SALA -->
+<div class="sala hidden" id="salaBolao">
+  <h2>🎉 Sala do Bolão</h2>
+
+  <div class="card">
+    <h3>👤 Seus dados</h3>
+    <p><strong>Nome:</strong> <span id="meuNome"></span></p>
+    <p><strong>Telefone:</strong> <span id="meuTelefone"></span></p>
+  </div>
+
+  <div class="card">
+    <h3>👥 Participantes</h3>
+    <ul id="listaParticipantes"></ul>
+  </div>
+
+  <div class="card">
+    <h3>🎯 Palpites do Bolão</h3>
+    <ul id="listaPalpites"></ul>
+  </div>
+</div>
+
+<audio id="successSound">
+  <source src="https://cdn.pixabay.com/audio/2022/03/15/audio_4b87d3b3f5.mp3">
+</audio>
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbyoEzMAJPNQ6fF38lvWAjDdKeLuMHIq88sIJUfRZNPL2jLgi7dQjJbznn2eh4ArInr2/exec';
+
+let nomeCliente = '';
+let telefoneCliente = '';
+let monitor = null;
+
+/* ===== AUTO LOGIN COM VALIDAÇÃO REAL ===== */
+window.onload = () => {
+  const auth = JSON.parse(localStorage.getItem('bolao_auth'));
+  if(auth){
+    nomeCliente = auth.nome;
+    telefoneCliente = auth.telefone;
+    validarAcessoInicial();
+  }
+};
+
+/* ===== VALIDAR ACESSO INICIAL ===== */
+function validarAcessoInicial(){
+  fetch(`${API_URL}?action=validateAccess&telefone=${encodeURIComponent(telefoneCliente)}`)
+    .then(r=>r.json())
+    .then(data=>{
+      if(data.authorized && data.status === 'ATIVO'){
+        entrarNaSala();
+        iniciarMonitor();
+      }else{
+        derrubarSessao();
+      }
+    })
+    .catch(()=>derrubarSessao());
+}
+
+/* ===== GERAR PIX ===== */
+function gerarPix(){
+  nomeCliente = document.getElementById('nome').value.trim();
+  telefoneCliente = document.getElementById('telefone').value.trim();
+  const status = document.getElementById('status');
+
+  if(!nomeCliente || !telefoneCliente){
+    status.innerText = 'Preencha todos os dados';
+    return;
+  }
+
+  status.innerText = 'Gerando Pix...';
+
+  fetch(API_URL,{
+    method:'POST',
+    body:JSON.stringify({
+      action:'createPayment',
+      nome:nomeCliente,
+      telefone:telefoneCliente
+    })
+  })
+  .then(r=>r.json())
+  .then(data=>{
+    document.getElementById('qr').innerHTML = `
+      <img src="data:image/png;base64,${data.qrCodeBase64}">
+      <div class="pix-box">
+        <input value="${data.pixKey}" readonly>
+      </div>
+    `;
+    verificarPagamento(data.paymentId);
+  });
+}
+
+/* ===== VERIFICAR PAGAMENTO ===== */
+function verificarPagamento(paymentId){
+  const check = setInterval(()=>{
+    fetch(API_URL,{
+      method:'POST',
+      body:JSON.stringify({action:'checkPayment',paymentId})
+    })
+    .then(r=>r.json())
+    .then(data=>{
+      if(data.status === 'PAID'){
+        clearInterval(check);
+
+        localStorage.setItem('bolao_auth', JSON.stringify({
+          nome:nomeCliente,
+          telefone:telefoneCliente
+        }));
+
+        document.getElementById('successSound').play();
+        validarAcessoInicial();
+      }
+    });
+  },5000);
+}
+
+/* ===== ENTRAR NA SALA ===== */
+function entrarNaSala(){
+  document.getElementById('loginArea').classList.add('hidden');
+  document.getElementById('salaBolao').classList.remove('hidden');
+
+  document.getElementById('meuNome').innerText = nomeCliente;
+  document.getElementById('meuTelefone').innerText = telefoneCliente;
+
+  carregarParticipantes();
+  carregarPalpites();
+}
+
+/* ===== MONITORAMENTO REAL ===== */
+function iniciarMonitor(){
+  if(monitor) clearInterval(monitor);
+
+  monitor = setInterval(()=>{
+    fetch(`${API_URL}?action=validateAccess&telefone=${encodeURIComponent(telefoneCliente)}`)
+      .then(r=>r.json())
+      .then(data=>{
+        if(!data.authorized || data.status !== 'ATIVO'){
+          derrubarSessao();
+        }
+      })
+      .catch(()=>derrubarSessao());
+  },5000);
+}
+
+/* ===== DERRUBAR ===== */
+function derrubarSessao(){
+  localStorage.removeItem('bolao_auth');
+  alert('🚫 Seu acesso foi removido pelo administrador.');
+  location.reload();
+}
+
+/* ===== PARTICIPANTES ===== */
+function carregarParticipantes(){
+  fetch(API_URL+'?action=infoBolao')
+  .then(r=>r.json())
+  .then(data=>{
+    const ul = document.getElementById('listaParticipantes');
+    ul.innerHTML='';
+    data.participantes.forEach(p=>{
+      const li=document.createElement('li');
+      li.textContent=p.nome;
+      ul.appendChild(li);
+    });
+  });
+}
+
+/* ===== PALPITES ===== */
+function carregarPalpites(){
+  fetch(API_URL+'?action=getPalpites')
+  .then(r=>r.json())
+  .then(data=>{
+    const ul=document.getElementById('listaPalpites');
+    ul.innerHTML='';
+    data.palpites.forEach(p=>{
+      const li=document.createElement('li');
+      li.textContent = `${p.nome}: ${p.numeros}`;
+      ul.appendChild(li);
+    });
+  });
+}
+</script>
+
+</body>
+</html>
+
