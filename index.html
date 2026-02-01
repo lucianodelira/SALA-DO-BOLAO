@@ -1,319 +1,122 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Sala Exclusiva</title>
-  
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: 'Poppins', sans-serif;
-      background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-      color: white;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 20px;
-      overflow: hidden;
-    }
-
-    /* Fundo animado sutil */
-    body::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at 20% 30%, rgba(0, 200, 83, 0.08) 0%, transparent 40%);
-      pointer-events: none;
-      animation: pulse 12s infinite alternate;
-    }
-
-    @keyframes pulse {
-      0% { opacity: 0.4; transform: scale(1); }
-      100% { opacity: 0.8; transform: scale(1.15); }
-    }
-
-    .container {
-      position: relative;
-      width: 100%;
-      max-width: 440px;
-      background: rgba(28, 28, 44, 0.65);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border-radius: 24px;
-      border: 1px solid rgba(255,255,255,0.08);
-      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-      padding: 40px 32px;
-      overflow: hidden;
-    }
-
-    .container::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
-      background: conic-gradient(
-        from 90deg at 50% 50%,
-        rgba(0,200,83,0.12),
-        rgba(0,255,120,0.08),
-        transparent 40%
-      );
-      animation: rotate 20s linear infinite;
-      pointer-events: none;
-    }
-
-    @keyframes rotate {
-      100% { transform: rotate(360deg); }
-    }
-
-    h2 {
-      font-size: 2.1rem;
-      font-weight: 700;
-      margin-bottom: 8px;
-      background: linear-gradient(90deg, #00ff88, #00c853);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      text-align: center;
-    }
-
-    .subtitle {
-      color: #a0a0ff;
-      text-align: center;
-      margin-bottom: 32px;
-      font-size: 0.98rem;
-      opacity: 0.9;
-    }
-
-    .input-group {
-      margin-bottom: 20px;
-      position: relative;
-    }
-
-    input {
-      width: 100%;
-      padding: 16px 18px;
-      background: rgba(40, 40, 60, 0.7);
-      border: 1px solid rgba(100, 255, 150, 0.15);
-      border-radius: 14px;
-      color: white;
-      font-size: 1rem;
-      transition: all 0.25s ease;
-    }
-
-    input:focus {
-      outline: none;
-      border-color: #00c853;
-      box-shadow: 0 0 0 3px rgba(0, 200, 83, 0.25);
-      background: rgba(40, 40, 60, 0.9);
-    }
-
-    input::placeholder {
-      color: #aaaaaa;
-    }
-
-    button {
-      width: 100%;
-      padding: 16px;
-      margin: 12px 0 8px;
-      background: linear-gradient(90deg, #00c853, #00ff88);
-      color: #0f0f1f;
-      font-size: 1.05rem;
-      font-weight: 700;
-      border: none;
-      border-radius: 14px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 8px 25px rgba(0, 200, 83, 0.35);
-    }
-
-    button:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 14px 35px rgba(0, 200, 83, 0.5);
-    }
-
-    button:active {
-      transform: translateY(0);
-    }
-
-    .sala-content {
-      text-align: center;
-    }
-
-    .sala-content h2 {
-      margin-bottom: 28px;
-    }
-
-    .info-card {
-      background: rgba(0, 200, 83, 0.08);
-      border: 1px solid rgba(0, 200, 83, 0.25);
-      border-radius: 16px;
-      padding: 24px;
-      margin: 24px 0;
-      backdrop-filter: blur(8px);
-    }
-
-    .info-item {
-      display: flex;
-      justify-content: space-between;
-      margin: 14px 0;
-      font-size: 1.05rem;
-    }
-
-    .label {
-      color: #a0ffa0;
-      font-weight: 500;
-    }
-
-    .value {
-      font-weight: 600;
-      color: white;
-    }
-
-    #msg {
-      color: #ff6b6b;
-      font-size: 0.95rem;
-      margin-top: 12px;
-      min-height: 1.4em;
-      text-align: center;
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    .logout-btn {
-      background: linear-gradient(90deg, #ff5252, #ff7675) !important;
-      color: white !important;
-      box-shadow: 0 8px 25px rgba(255, 82, 82, 0.35) !important;
-    }
-
-    .logout-btn:hover {
-      box-shadow: 0 14px 35px rgba(255, 82, 82, 0.55) !important;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Sala do Bolão</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{
+  margin:0;
+  font-family:Arial;
+  background:#0f0f1f;
+  color:white;
+}
+header{
+  background:#15152a;
+  padding:15px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.card{
+  background:#1c1c3a;
+  padding:15px;
+  border-radius:10px;
+  margin:10px;
+}
+main{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:10px;
+  padding:10px;
+}
+button{
+  padding:12px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  background:#00c853;
+  color:black;
+  font-weight:bold;
+}
+#lista div{
+  padding:6px;
+  border-bottom:1px solid #333;
+}
+iframe{
+  width:100%;
+  height:400px;
+  border:none;
+}
+@media(max-width:900px){
+  main{grid-template-columns:1fr;}
+}
+</style>
 </head>
 <body>
 
-<div class="container" id="loginBox">
-  <h2>Entrar na Sala</h2>
-  <p class="subtitle">Acesse agora a área exclusiva</p>
+<header>
+  <div>👥 Participantes Ativos: <b id="total">0</b></div>
+  <button onclick="abrirSite()">🌐 Abrir Site</button>
+</header>
 
-  <div class="input-group">
-    <input id="nome" placeholder="Seu nome completo" autocomplete="name">
-  </div>
-  
-  <div class="input-group">
-    <input id="telefone" placeholder="Seu telefone (com DDD)" autocomplete="tel">
-  </div>
-
-  <button onclick="login()">Entrar Agora</button>
-  <div id="msg"></div>
+<div id="iframeBox" class="card" style="display:none;">
+  <iframe src="https://www.zepitaco.com"></iframe>
 </div>
 
-<div class="container hidden" id="salaBox">
-  <div class="sala-content">
-    <h2>Bem-vindo(a)!</h2>
+<main>
 
-    <div class="info-card">
-      <div class="info-item">
-        <span class="label">ID:</span>
-        <span class="value" id="userId"></span>
-      </div>
-      <div class="info-item">
-        <span class="label">Nome:</span>
-        <span class="value" id="userNome"></span>
-      </div>
-    </div>
-
-    <button class="logout-btn" onclick="logout()">Sair da Sala</button>
+  <div class="card">
+    <h3>Participantes</h3>
+    <div id="lista">Carregando...</div>
   </div>
-</div>
+
+  <div class="card">
+    <h3>Bolão</h3>
+    <button onclick="participar()">Participar do Bolão</button>
+  </div>
+
+  <div class="card">
+    <h3>Exibir Bolão</h3>
+    <button onclick="exibir()">Exibir Bolão</button>
+  </div>
+
+</main>
 
 <script>
-// Seu script atual continua funcionando normalmente
-const API_URL = 'https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec';
-let monitorInterval = null;
+const API = 'https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec';
 
-function login() {
-  const nome = document.getElementById('nome').value.trim();
-  const telefone = document.getElementById('telefone').value.trim();
-  const msg = document.getElementById('msg');
-  msg.innerText = '';
+function carregar(){
+  fetch(API+'?action=totalAtivos')
+    .then(r=>r.json())
+    .then(d=>document.getElementById('total').innerText=d.total);
 
-  if (!nome || !telefone) {
-    msg.innerText = 'Preencha todos os campos corretamente';
-    return;
-  }
-
-  fetch(`${API_URL}?action=loginSala&nome=${encodeURIComponent(nome)}&telefone=${encodeURIComponent(telefone)}`)
-    .then(r => r.json())
-    .then(res => {
-      if (res.success) {
-        sessionStorage.setItem('userId', res.id);
-        sessionStorage.setItem('userNome', res.nome);
-        entrarSala();
-      } else {
-        msg.innerText = res.message || 'Não foi possível entrar';
-      }
-    })
-    .catch(() => {
-      msg.innerText = 'Erro ao conectar. Tente novamente.';
+  fetch(API+'?action=listarAtivos')
+    .then(r=>r.json())
+    .then(lista=>{
+      const box=document.getElementById('lista');
+      box.innerHTML='';
+      lista.forEach(p=>{
+        box.innerHTML+=`<div>${p.id} - ${p.nome}</div>`;
+      });
     });
 }
 
-function entrarSala() {
-  document.getElementById('loginBox').classList.add('hidden');
-  document.getElementById('salaBox').classList.remove('hidden');
-  document.getElementById('userId').innerText = sessionStorage.getItem('userId');
-  document.getElementById('userNome').innerText = sessionStorage.getItem('userNome');
-  iniciarMonitoramento();
+function abrirSite(){
+  const box=document.getElementById('iframeBox');
+  box.style.display = box.style.display==='none'?'block':'none';
 }
 
-function iniciarMonitoramento() {
-  if (monitorInterval) clearInterval(monitorInterval);
-  monitorInterval = setInterval(() => {
-    const id = sessionStorage.getItem('userId');
-    if (!id) return;
-    fetch(`${API_URL}?action=verificarStatus&id=${encodeURIComponent(id)}`)
-      .then(r => r.json())
-      .then(res => {
-        if (!res.ativo) {
-          derrubarUsuario();
-        }
-      })
-      .catch(() => {});
-  }, 5000);
+function participar(){
+  alert('Você entrou no bolão!');
 }
 
-function derrubarUsuario() {
-  clearInterval(monitorInterval);
-  sessionStorage.clear();
-  alert('Seu acesso foi encerrado. Você foi removido da sala.');
-  location.reload();
+function exibir(){
+  alert('Bolão em exibição');
 }
 
-function logout() {
-  clearInterval(monitorInterval);
-  sessionStorage.clear();
-  location.reload();
-}
-
-if (sessionStorage.getItem('userId')) {
-  entrarSala();
-}
+carregar();
+setInterval(carregar, 5000);
 </script>
 
 </body>
