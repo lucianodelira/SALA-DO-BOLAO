@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>Sala de Participantes</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
 body {
   font-family: Arial, sans-serif;
@@ -29,17 +30,27 @@ input, button {
   border-radius: 8px;
   border: none;
 }
-input { background: #2a2a2a; color: white; }
+input {
+  background: #2a2a2a;
+  color: white;
+}
 button {
   background: #00c853;
   font-weight: bold;
   cursor: pointer;
 }
-.hidden { display: none; }
+.hidden {
+  display: none;
+}
+#msg {
+  margin-top: 10px;
+  color: #ff5252;
+}
 </style>
 </head>
 <body>
 
+<!-- LOGIN -->
 <div class="box" id="loginBox">
   <h2>Entrar na Sala</h2>
   <input id="nome" placeholder="Seu nome">
@@ -48,6 +59,7 @@ button {
   <div id="msg"></div>
 </div>
 
+<!-- SALA -->
 <div class="box hidden" id="salaBox">
   <h2>Bem-vindo à Sala</h2>
   <p><strong>ID:</strong> <span id="userId"></span></p>
@@ -58,12 +70,18 @@ button {
 <script>
 const API_URL = 'https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec';
 
+let monitorInterval = null;
+
+/* ================= LOGIN ================= */
 function login() {
   const nome = document.getElementById('nome').value.trim();
   const telefone = document.getElementById('telefone').value.trim();
+  const msg = document.getElementById('msg');
+
+  msg.innerText = '';
 
   if (!nome || !telefone) {
-    document.getElementById('msg').innerText = 'Preencha todos os campos';
+    msg.innerText = 'Preencha todos os campos';
     return;
   }
 
@@ -75,14 +93,15 @@ function login() {
         sessionStorage.setItem('userNome', res.nome);
         entrarSala();
       } else {
-        document.getElementById('msg').innerText = res.message;
+        msg.innerText = res.message;
       }
     })
     .catch(() => {
-      document.getElementById('msg').innerText = 'Erro de conexão';
+      msg.innerText = 'Erro de conexão com o servidor';
     });
 }
 
+/* ================= ENTRAR NA SALA ================= */
 function entrarSala() {
   document.getElementById('loginBox').classList.add('hidden');
   document.getElementById('salaBox').classList.remove('hidden');
@@ -92,13 +111,46 @@ function entrarSala() {
 
   document.getElementById('userNome').innerText =
     sessionStorage.getItem('userNome');
+
+  iniciarMonitoramento();
 }
 
+/* ================= MONITORAMENTO EM TEMPO REAL ================= */
+function iniciarMonitoramento() {
+  if (monitorInterval) clearInterval(monitorInterval);
+
+  monitorInterval = setInterval(() => {
+    const id = sessionStorage.getItem('userId');
+    if (!id) return;
+
+    fetch(`${API_URL}?action=verificarStatus&id=${encodeURIComponent(id)}`)
+      .then(r => r.json())
+      .then(res => {
+        if (!res.ativo) {
+          derrubarUsuario();
+        }
+      })
+      .catch(() => {});
+  }, 5000); // verifica a cada 5 segundos
+}
+
+/* ================= DERRUBAR USUÁRIO ================= */
+function derrubarUsuario() {
+  clearInterval(monitorInterval);
+  sessionStorage.clear();
+
+  alert('Seu acesso foi encerrado. Você foi removido da sala.');
+  location.reload();
+}
+
+/* ================= LOGOUT ================= */
 function logout() {
+  clearInterval(monitorInterval);
   sessionStorage.clear();
   location.reload();
 }
 
+/* ================= AUTO-LOGIN ================= */
 if (sessionStorage.getItem('userId')) {
   entrarSala();
 }
