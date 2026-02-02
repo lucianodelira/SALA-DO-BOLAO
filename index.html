@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sala Exclusiva</title>
 
+<link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
@@ -21,7 +22,7 @@ body{
 .container{
   width:100%;
   max-width:1000px;
-  background:rgba(28,28,44,.8);
+  background:rgba(28,28,44,.85);
   border-radius:20px;
   padding:30px;
 }
@@ -77,12 +78,20 @@ iframe{
   border-radius:10px;
   font-size:14px;
 }
-.chat-msg{
-  margin-bottom:6px;
-}
-.chat-name{
-  color:#00ff88;
-  font-weight:600;
+.chat-msg{margin-bottom:6px}
+.chat-name{color:#00ff88;font-weight:600}
+
+/* NOTIFICAÇÃO */
+.notif{
+  position:fixed;
+  bottom:20px;
+  right:20px;
+  background:#00c853;
+  color:#000;
+  padding:14px 18px;
+  border-radius:12px;
+  font-weight:700;
+  z-index:9999;
 }
 </style>
 </head>
@@ -102,14 +111,12 @@ iframe{
 <!-- SALA -->
 <div class="container hidden" id="salaBox">
 
-  <!-- TOPO -->
   <div class="info-card">
     <h3>Participantes Ativos</h3>
     <h2 id="totalAtivos">0</h2>
     <button onclick="abrirIframe()">Abrir Site</button>
   </div>
 
-  <!-- GRID -->
   <div class="grid">
     <div class="info-card">
       <h3>👥 Participantes</h3>
@@ -123,7 +130,6 @@ iframe{
     </div>
   </div>
 
-  <!-- CHAT -->
   <div class="info-card">
     <h3>💬 Chat da Sala</h3>
     <div class="chat-box" id="chatBox"></div>
@@ -131,7 +137,6 @@ iframe{
     <button onclick="enviarMsg()">Enviar</button>
   </div>
 
-  <!-- IFRAME -->
   <div class="info-card hidden" id="iframeBox">
     <button class="logout" onclick="fecharIframe()">Fechar</button>
     <iframe src="https://www.zepitaco.com"></iframe>
@@ -142,8 +147,11 @@ iframe{
 
 <script>
 const API_URL = 'https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec';
+
 let monitorInterval=null;
 let chatInterval=null;
+let ultimaQtd=0;
+const audio = new Audio('https://actions.google.com/sounds/v1/notifications/pop.ogg');
 
 function login(){
   fetch(`${API_URL}?action=loginSala&nome=${nome.value}&telefone=${telefone.value}`)
@@ -153,7 +161,7 @@ function login(){
       sessionStorage.setItem('userId',res.id);
       sessionStorage.setItem('userNome',res.nome);
       entrarSala();
-    }else msg.innerText=res.message;
+    } else msg.innerText=res.message;
   });
 }
 
@@ -183,16 +191,21 @@ function iniciarMonitoramento(){
   },5000);
 }
 
-/* CHAT */
+/* CHAT + NOTIFICAÇÃO */
 function carregarChat(){
   chatInterval=setInterval(()=>{
     fetch(`${API_URL}?action=getChat`)
     .then(r=>r.json())
     .then(msgs=>{
+      if(msgs.length > ultimaQtd){
+        audio.play();
+        notificar('Nova mensagem no chat 💬');
+      }
+      ultimaQtd = msgs.length;
+
       chatBox.innerHTML='';
       msgs.forEach(m=>{
-        chatBox.innerHTML+=
-        `<div class="chat-msg"><span class="chat-name">${m.nome}:</span> ${m.msg}</div>`;
+        chatBox.innerHTML+=`<div class="chat-msg"><span class="chat-name">${m.nome}:</span> ${m.msg}</div>`;
       });
       chatBox.scrollTop=chatBox.scrollHeight;
     });
@@ -205,6 +218,14 @@ function enviarMsg(){
   chatMsg.value='';
 }
 
+function notificar(txt){
+  const n=document.createElement('div');
+  n.className='notif';
+  n.innerText=txt;
+  document.body.appendChild(n);
+  setTimeout(()=>n.remove(),2500);
+}
+
 function abrirIframe(){iframeBox.classList.remove('hidden')}
 function fecharIframe(){iframeBox.classList.add('hidden')}
 function participarBolao(){alert('Você entrou no bolão')}
@@ -215,6 +236,10 @@ function logout(force){
   sessionStorage.clear();
   if(force) alert('Você foi removido');
   location.reload();
+}
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js');
 }
 
 if(sessionStorage.getItem('userId')) entrarSala();
