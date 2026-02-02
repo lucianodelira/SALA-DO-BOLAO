@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sala Exclusiva</title>
-
+<title>Sala com Chat</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
@@ -20,57 +19,52 @@ body{
 }
 .container{
   width:100%;
-  max-width:900px;
+  max-width:1000px;
   background:rgba(28,28,44,.75);
   border-radius:20px;
-  padding:30px;
-  box-shadow:0 20px 60px rgba(0,0,0,.6);
+  padding:25px;
 }
-h2,h3{color:#00ff88;text-align:center}
-.subtitle{text-align:center;margin-bottom:20px;color:#ccc}
-input,button{
-  width:100%;
-  padding:14px;
-  border-radius:12px;
-  border:none;
-  margin-top:10px;
-  font-size:15px;
-}
-input{background:#1f1f3a;color:#fff}
-button{
-  background:linear-gradient(90deg,#00c853,#00ff88);
-  font-weight:700;
-  cursor:pointer;
-}
-button:hover{opacity:.9}
+h2,h3{text-align:center;color:#00ff88}
 .hidden{display:none}
 .info-card{
   background:rgba(0,200,83,.08);
   border:1px solid rgba(0,200,83,.25);
   border-radius:16px;
-  padding:20px;
-  margin:15px 0;
+  padding:15px;
+  margin:10px 0;
 }
 .grid{
   display:grid;
   grid-template-columns:1fr 1fr;
-  gap:20px;
+  gap:15px;
 }
-#listaParticipantes{
-  max-height:220px;
-  overflow:auto;
-  font-size:14px;
+button,input{
+  width:100%;
+  padding:12px;
+  border-radius:10px;
+  border:none;
+  margin-top:8px;
+}
+button{
+  background:linear-gradient(90deg,#00c853,#00ff88);
+  font-weight:700;
+  cursor:pointer;
 }
 .logout{
   background:linear-gradient(90deg,#ff5252,#ff7675);
-  margin-top:20px;
 }
-iframe{
-  width:100%;
-  height:400px;
-  border:none;
-  border-radius:12px;
+#chatBox{
+  height:260px;
+  overflow:auto;
+  font-size:14px;
+  background:#0f102a;
+  padding:10px;
+  border-radius:10px;
 }
+.msg{
+  margin-bottom:6px;
+}
+.msg strong{color:#00ff88}
 </style>
 </head>
 
@@ -79,24 +73,20 @@ iframe{
 <!-- LOGIN -->
 <div class="container" id="loginBox">
   <h2>Entrar na Sala</h2>
-  <p class="subtitle">Acesso exclusivo</p>
   <input id="nome" placeholder="Nome completo">
-  <input id="telefone" placeholder="Telefone com DDD">
+  <input id="telefone" placeholder="Telefone">
   <button onclick="login()">Entrar</button>
-  <p id="msg" style="color:#ff6b6b;text-align:center;margin-top:10px"></p>
+  <p id="msg" style="color:#ff6b6b;text-align:center"></p>
 </div>
 
 <!-- SALA -->
 <div class="container hidden" id="salaBox">
 
-  <!-- TOPO -->
   <div class="info-card">
     <h3>Participantes Ativos</h3>
     <h2 id="totalAtivos">0</h2>
-    <button onclick="abrirIframe()">Abrir Site</button>
   </div>
 
-  <!-- CORPO -->
   <div class="grid">
     <div class="info-card">
       <h3>👥 Participantes</h3>
@@ -104,16 +94,11 @@ iframe{
     </div>
 
     <div class="info-card">
-      <h3>🎯 Bolão</h3>
-      <button onclick="participarBolao()">Participar do Bolão</button>
-      <button onclick="exibirBolao()">Exibir Bolão</button>
+      <h3>💬 Chat da Sala</h3>
+      <div id="chatBox"></div>
+      <input id="chatMsg" placeholder="Digite sua mensagem">
+      <button onclick="enviarMsg()">Enviar</button>
     </div>
-  </div>
-
-  <!-- IFRAME -->
-  <div class="info-card hidden" id="iframeBox">
-    <button class="logout" onclick="fecharIframe()">Fechar Aba</button>
-    <iframe src="https://www.zepitaco.com"></iframe>
   </div>
 
   <button class="logout" onclick="logout()">Sair</button>
@@ -121,67 +106,73 @@ iframe{
 
 <script>
 const API_URL = 'https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec';
-let monitorInterval=null;
+let chatInterval, statusInterval;
 
 function login(){
-  const nome=nomeInput().value.trim();
-  const tel=telefoneInput().value.trim();
-  msg().innerText='';
-  if(!nome||!tel){msg().innerText='Preencha tudo';return;}
-
-  fetch(`${API_URL}?action=loginSala&nome=${encodeURIComponent(nome)}&telefone=${encodeURIComponent(tel)}`)
-    .then(r=>r.json())
-    .then(res=>{
-      if(res.success){
-        sessionStorage.setItem('userId',res.id);
-        entrarSala();
-      }else msg().innerText=res.message;
-    });
+  fetch(`${API_URL}?action=loginSala&nome=${nome.value}&telefone=${telefone.value}`)
+  .then(r=>r.json())
+  .then(res=>{
+    if(res.success){
+      sessionStorage.setItem('userId',res.id);
+      sessionStorage.setItem('userNome',res.nome);
+      entrarSala();
+    }else msg.innerText=res.message;
+  });
 }
 
 function entrarSala(){
-  loginBox().classList.add('hidden');
-  salaBox().classList.remove('hidden');
+  loginBox.classList.add('hidden');
+  salaBox.classList.remove('hidden');
   carregarSala();
-  iniciarMonitoramento();
+  carregarChat();
+  iniciarLoops();
 }
 
 function carregarSala(){
   fetch(`${API_URL}?action=dashboard`)
-    .then(r=>r.json())
-    .then(res=>{
-      totalAtivos.innerText=res.totalAtivos;
-      listaParticipantes.innerHTML='';
-      res.participantes.forEach(n=>listaParticipantes.innerHTML+=`• ${n}<br>`);
-    });
+  .then(r=>r.json())
+  .then(res=>{
+    totalAtivos.innerText=res.totalAtivos;
+    listaParticipantes.innerHTML='';
+    res.participantes.forEach(p=>listaParticipantes.innerHTML+=`• ${p}<br>`);
+  });
 }
 
-function iniciarMonitoramento(){
-  monitorInterval=setInterval(()=>{
+function enviarMsg(){
+  const texto=chatMsg.value.trim();
+  if(!texto) return;
+  chatMsg.value='';
+  fetch(`${API_URL}?action=enviarMsg&nome=${sessionStorage.getItem('userNome')}&msg=${encodeURIComponent(texto)}`);
+}
+
+function carregarChat(){
+  fetch(`${API_URL}?action=buscarChat`)
+  .then(r=>r.json())
+  .then(res=>{
+    chatBox.innerHTML='';
+    res.forEach(m=>{
+      chatBox.innerHTML+=`<div class="msg"><strong>${m.nome}:</strong> ${m.msg}</div>`;
+    });
+    chatBox.scrollTop=chatBox.scrollHeight;
+  });
+}
+
+function iniciarLoops(){
+  chatInterval=setInterval(carregarChat,3000);
+  statusInterval=setInterval(()=>{
     fetch(`${API_URL}?action=verificarStatus&id=${sessionStorage.getItem('userId')}`)
-      .then(r=>r.json())
-      .then(res=>{if(!res.ativo) logout(true)});
+    .then(r=>r.json())
+    .then(res=>{if(!res.ativo) logout(true)});
   },5000);
 }
 
-function abrirIframe(){iframeBox.classList.remove('hidden')}
-function fecharIframe(){iframeBox.classList.add('hidden')}
-function participarBolao(){alert('Participação registrada')}
-function exibirBolao(){alert('Bolão em exibição')}
 function logout(force){
-  clearInterval(monitorInterval);
+  clearInterval(chatInterval);
+  clearInterval(statusInterval);
   sessionStorage.clear();
   if(force) alert('Acesso encerrado');
   location.reload();
 }
-
-const nomeInput=()=>document.getElementById('nome');
-const telefoneInput=()=>document.getElementById('telefone');
-const msg=()=>document.getElementById('msg');
-const loginBox=()=>document.getElementById('loginBox');
-const salaBox=()=>document.getElementById('salaBox');
-
-if(sessionStorage.getItem('userId')) entrarSala();
 </script>
 
 </body>
