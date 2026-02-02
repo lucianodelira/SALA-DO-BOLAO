@@ -6,6 +6,7 @@
 <title>Sala Exclusiva</title>
 
 <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00c853">
 
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
@@ -23,7 +24,7 @@ body{
 .container{
   width:100%;
   max-width:1000px;
-  background:rgba(28,28,44,.8);
+  background:rgba(28,28,44,.85);
   border-radius:20px;
   padding:30px;
 }
@@ -82,7 +83,7 @@ iframe{
 .chat-msg{margin-bottom:6px}
 .chat-name{color:#00ff88;font-weight:600}
 
-/* 🔥 BANNER APP */
+/* 📲 BANNER APP */
 #installBanner{
   position:fixed;
   bottom:20px;
@@ -92,14 +93,13 @@ iframe{
   color:#000;
   padding:12px 18px;
   border-radius:18px;
-  display:flex;
+  display:none;
   align-items:center;
   gap:12px;
   font-weight:700;
   z-index:9999;
   box-shadow:0 6px 25px rgba(0,0,0,.5);
 }
-
 #installBanner button{
   background:#000;
   color:#00ff88;
@@ -107,20 +107,17 @@ iframe{
   padding:6px 12px;
   border-radius:12px;
   font-weight:700;
-  cursor:pointer;
 }
-
 </style>
 </head>
 
 <body>
 
-<!-- 📲 BANNER INSTALAR APP -->
-<div id="installBanner" style="display:none">
-  <span>📲 Instalar App</span>
+<!-- 📲 BANNER INSTALAR -->
+<div id="installBanner">
+  <span>📲 Baixar App</span>
   <button onclick="instalarApp()">Instalar</button>
 </div>
-
 
 <!-- LOGIN -->
 <div class="container" id="loginBox">
@@ -149,8 +146,8 @@ iframe{
 
     <div class="info-card">
       <h3>🎯 Bolão</h3>
-      <button onclick="participarBolao()">Participar do Bolão</button>
-      <button onclick="exibirBolao()">Exibir Bolão</button>
+      <button onclick="participarBolao()">Participar</button>
+      <button onclick="exibirBolao()">Exibir</button>
     </div>
   </div>
 
@@ -172,23 +169,29 @@ iframe{
 <script>
 const API_URL='https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec';
 
-let installPrompt=null;
+let deferredPrompt;
 
-/* 📲 PWA */
-if('serviceWorker' in navigator){
+/* SERVICE WORKER */
+if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js');
 }
 
-window.addEventListener('beforeinstallprompt', e=>{
+/* BANNER INSTALAR */
+window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
-  installPrompt=e;
-  installBanner.style.display='block';
+  deferredPrompt = e;
+  document.getElementById('installBanner').style.display = 'flex';
 });
 
-installBanner.onclick=()=>{
-  installPrompt.prompt();
-  installPrompt.userChoice.then(()=>installBanner.style.display='none');
-};
+function instalarApp(){
+  document.getElementById('installBanner').style.display='none';
+  deferredPrompt.prompt();
+  deferredPrompt = null;
+}
+
+window.addEventListener('appinstalled', ()=>{
+  document.getElementById('installBanner').style.display='none';
+});
 
 /* LOGIN */
 function login(){
@@ -199,7 +202,7 @@ function login(){
       sessionStorage.setItem('userId',res.id);
       sessionStorage.setItem('userNome',res.nome);
       entrarSala();
-    }else msg.innerText=res.message;
+    } else msg.innerText=res.message;
   });
 }
 
@@ -215,8 +218,7 @@ function carregarSala(){
   .then(r=>r.json())
   .then(d=>{
     totalAtivos.innerText=d.totalAtivos;
-    listaParticipantes.innerHTML='';
-    d.participantes.forEach(p=>listaParticipantes.innerHTML+=`• ${p}<br>`);
+    listaParticipantes.innerHTML=d.participantes.join('<br>');
   });
 }
 
@@ -248,69 +250,6 @@ function exibirBolao(){alert('Bolão exibido')}
 function logout(){sessionStorage.clear();location.reload()}
 
 if(sessionStorage.getItem('userId')) entrarSala();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-let deferredPrompt;
-const banner = document.getElementById('installBanner');
-
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  banner.style.display = 'flex';
-});
-
-function instalarApp(){
-  banner.style.display = 'none';
-  deferredPrompt.prompt();
-  deferredPrompt.userChoice.then(() => {
-    deferredPrompt = null;
-  });
-}
-
-// Esconde se já estiver instalado
-window.addEventListener('appinstalled', () => {
-  banner.style.display = 'none';
-});
-
-
-
-
-
-
-
-
-
-
-
-  
 </script>
 
 </body>
