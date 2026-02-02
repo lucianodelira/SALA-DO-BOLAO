@@ -2,70 +2,74 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Sala do Bolão</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sala Exclusiva</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
+*{margin:0;padding:0;box-sizing:border-box}
 body{
-  margin:0;
-  font-family:Arial, sans-serif;
-  background:#0f0f1f;
-  color:white;
-}
-.hidden{display:none}
-.container{
-  max-width:420px;
-  margin:auto;
-  margin-top:10vh;
-  background:#1c1c3a;
-  padding:20px;
-  border-radius:12px;
-}
-input,button{
-  width:100%;
-  padding:12px;
-  margin-top:10px;
-  border-radius:8px;
-  border:none;
-}
-input{background:#2a2a55;color:white}
-button{
-  background:#00c853;
-  font-weight:bold;
-  cursor:pointer;
-}
-#msg{color:#ff6b6b;margin-top:10px;text-align:center}
-
-/* SALA */
-header{
-  background:#15152a;
-  padding:15px;
+  font-family:Poppins,sans-serif;
+  background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);
+  color:#fff;
+  min-height:100vh;
   display:flex;
-  justify-content:space-between;
+  justify-content:center;
   align-items:center;
 }
-main{
+.container{
+  width:100%;
+  max-width:900px;
+  background:rgba(28,28,44,.75);
+  border-radius:20px;
+  padding:30px;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);
+}
+h2,h3{color:#00ff88;text-align:center}
+.subtitle{text-align:center;margin-bottom:20px;color:#ccc}
+input,button{
+  width:100%;
+  padding:14px;
+  border-radius:12px;
+  border:none;
+  margin-top:10px;
+  font-size:15px;
+}
+input{background:#1f1f3a;color:#fff}
+button{
+  background:linear-gradient(90deg,#00c853,#00ff88);
+  font-weight:700;
+  cursor:pointer;
+}
+button:hover{opacity:.9}
+.hidden{display:none}
+.info-card{
+  background:rgba(0,200,83,.08);
+  border:1px solid rgba(0,200,83,.25);
+  border-radius:16px;
+  padding:20px;
+  margin:15px 0;
+}
+.grid{
   display:grid;
-  grid-template-columns:1fr 1fr 1fr;
-  gap:10px;
-  padding:10px;
+  grid-template-columns:1fr 1fr;
+  gap:20px;
 }
-.card{
-  background:#1c1c3a;
-  padding:15px;
-  border-radius:10px;
+#listaParticipantes{
+  max-height:220px;
+  overflow:auto;
+  font-size:14px;
 }
-#lista div{
-  border-bottom:1px solid #333;
-  padding:5px;
+.logout{
+  background:linear-gradient(90deg,#ff5252,#ff7675);
+  margin-top:20px;
 }
 iframe{
   width:100%;
   height:400px;
   border:none;
-}
-@media(max-width:900px){
-  main{grid-template-columns:1fr;}
+  border-radius:12px;
 }
 </style>
 </head>
@@ -75,138 +79,109 @@ iframe{
 <!-- LOGIN -->
 <div class="container" id="loginBox">
   <h2>Entrar na Sala</h2>
-  <input id="nome" placeholder="Seu nome">
-  <input id="telefone" placeholder="Telefone (senha)">
+  <p class="subtitle">Acesso exclusivo</p>
+  <input id="nome" placeholder="Nome completo">
+  <input id="telefone" placeholder="Telefone com DDD">
   <button onclick="login()">Entrar</button>
-  <div id="msg"></div>
+  <p id="msg" style="color:#ff6b6b;text-align:center;margin-top:10px"></p>
 </div>
 
 <!-- SALA -->
-<div id="salaBox" class="hidden">
+<div class="container hidden" id="salaBox">
 
-<header>
-  <div>👥 Ativos: <b id="total">0</b></div>
-  <button onclick="toggleIframe()">🌐 Abrir Site</button>
-  <button onclick="logout()" style="background:#ff5252">Sair</button>
-</header>
-
-<div id="iframeBox" class="card hidden">
-  <iframe src="https://www.zepitaco.com"></iframe>
-</div>
-
-<main>
-  <div class="card">
-    <h3>Participantes</h3>
-    <div id="lista">Carregando...</div>
+  <!-- TOPO -->
+  <div class="info-card">
+    <h3>Participantes Ativos</h3>
+    <h2 id="totalAtivos">0</h2>
+    <button onclick="abrirIframe()">Abrir Site</button>
   </div>
 
-  <div class="card">
-    <h3>Bolão</h3>
-    <button onclick="participar()">Participar do Bolão</button>
+  <!-- CORPO -->
+  <div class="grid">
+    <div class="info-card">
+      <h3>👥 Participantes</h3>
+      <div id="listaParticipantes"></div>
+    </div>
+
+    <div class="info-card">
+      <h3>🎯 Bolão</h3>
+      <button onclick="participarBolao()">Participar do Bolão</button>
+      <button onclick="exibirBolao()">Exibir Bolão</button>
+    </div>
   </div>
 
-  <div class="card">
-    <h3>Exibir Bolão</h3>
-    <button onclick="exibir()">Exibir Bolão</button>
+  <!-- IFRAME -->
+  <div class="info-card hidden" id="iframeBox">
+    <button class="logout" onclick="fecharIframe()">Fechar Aba</button>
+    <iframe src="https://www.zepitaco.com"></iframe>
   </div>
-</main>
 
+  <button class="logout" onclick="logout()">Sair</button>
 </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec';
-let monitor;
+const API_URL = 'https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec';
+let monitorInterval=null;
 
-/******** LOGIN ********/
 function login(){
-  const nome = nomeInput.value.trim();
-  const telefone = telefoneInput.value.trim();
-  msg.innerText='';
+  const nome=nomeInput().value.trim();
+  const tel=telefoneInput().value.trim();
+  msg().innerText='';
+  if(!nome||!tel){msg().innerText='Preencha tudo';return;}
 
-  if(!nome || !telefone){
-    msg.innerText='Preencha todos os campos';
-    return;
-  }
-
-  fetch(`${API}?action=loginSala&nome=${encodeURIComponent(nome)}&telefone=${encodeURIComponent(telefone)}`)
+  fetch(`${API_URL}?action=loginSala&nome=${encodeURIComponent(nome)}&telefone=${encodeURIComponent(tel)}`)
     .then(r=>r.json())
     .then(res=>{
       if(res.success){
-        sessionStorage.setItem('id',res.id);
-        sessionStorage.setItem('nome',res.nome);
+        sessionStorage.setItem('userId',res.id);
         entrarSala();
-      }else{
-        msg.innerText=res.message || 'Acesso negado';
-      }
+      }else msg().innerText=res.message;
     });
 }
 
-/******** SALA ********/
 function entrarSala(){
-  loginBox.classList.add('hidden');
-  salaBox.classList.remove('hidden');
-  carregar();
-  monitor = setInterval(verificarStatus,5000);
+  loginBox().classList.add('hidden');
+  salaBox().classList.remove('hidden');
+  carregarSala();
+  iniciarMonitoramento();
 }
 
-function verificarStatus(){
-  const id = sessionStorage.getItem('id');
-  fetch(`${API}?action=verificarStatus&id=${id}`)
+function carregarSala(){
+  fetch(`${API_URL}?action=dashboard`)
     .then(r=>r.json())
     .then(res=>{
-      if(!res.ativo){
-        alert('Você foi removido da sala');
-        logout();
-      }
+      totalAtivos.innerText=res.totalAtivos;
+      listaParticipantes.innerHTML='';
+      res.participantes.forEach(n=>listaParticipantes.innerHTML+=`• ${n}<br>`);
     });
 }
 
-function carregar(){
-  fetch(API+'?action=totalAtivos')
-    .then(r=>r.json())
-    .then(d=>total.innerText=d.total);
-
-  fetch(API+'?action=listarAtivos')
-    .then(r=>r.json())
-    .then(lista=>{
-      listaDiv.innerHTML='';
-      lista.forEach(p=>{
-        listaDiv.innerHTML+=`<div>${p.id} - ${p.nome}</div>`;
-      });
-    });
+function iniciarMonitoramento(){
+  monitorInterval=setInterval(()=>{
+    fetch(`${API_URL}?action=verificarStatus&id=${sessionStorage.getItem('userId')}`)
+      .then(r=>r.json())
+      .then(res=>{if(!res.ativo) logout(true)});
+  },5000);
 }
 
-function toggleIframe(){
-  iframeBox.classList.toggle('hidden');
-}
-
-function participar(){
-  alert('Participação registrada');
-}
-
-function exibir(){
-  alert('Exibindo bolão');
-}
-
-function logout(){
-  clearInterval(monitor);
+function abrirIframe(){iframeBox.classList.remove('hidden')}
+function fecharIframe(){iframeBox.classList.add('hidden')}
+function participarBolao(){alert('Participação registrada')}
+function exibirBolao(){alert('Bolão em exibição')}
+function logout(force){
+  clearInterval(monitorInterval);
   sessionStorage.clear();
+  if(force) alert('Acesso encerrado');
   location.reload();
 }
 
-/******** AUTO LOGIN ********/
-if(sessionStorage.getItem('id')){
-  entrarSala();
-}
+const nomeInput=()=>document.getElementById('nome');
+const telefoneInput=()=>document.getElementById('telefone');
+const msg=()=>document.getElementById('msg');
+const loginBox=()=>document.getElementById('loginBox');
+const salaBox=()=>document.getElementById('salaBox');
 
-/******** SHORTCUTS ********/
-const nomeInput = document.getElementById('nome');
-const telefoneInput = document.getElementById('telefone');
-const msg = document.getElementById('msg');
-const loginBox = document.getElementById('loginBox');
-const salaBox = document.getElementById('salaBox');
-const listaDiv = document.getElementById('lista');
-const iframeBox = document.getElementById('iframeBox');
+if(sessionStorage.getItem('userId')) entrarSala();
 </script>
 
 </body>
