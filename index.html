@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sala com Chat</title>
+<title>Sala Exclusiva</title>
+
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
@@ -20,51 +21,69 @@ body{
 .container{
   width:100%;
   max-width:1000px;
-  background:rgba(28,28,44,.75);
+  background:rgba(28,28,44,.8);
   border-radius:20px;
-  padding:25px;
+  padding:30px;
 }
-h2,h3{text-align:center;color:#00ff88}
-.hidden{display:none}
-.info-card{
-  background:rgba(0,200,83,.08);
-  border:1px solid rgba(0,200,83,.25);
-  border-radius:16px;
-  padding:15px;
-  margin:10px 0;
-}
-.grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:15px;
-}
-button,input{
+h2,h3{color:#00ff88;text-align:center}
+.subtitle{text-align:center;color:#ccc;margin-bottom:15px}
+input,button{
   width:100%;
   padding:12px;
   border-radius:10px;
   border:none;
   margin-top:8px;
 }
+input{background:#1f1f3a;color:#fff}
 button{
   background:linear-gradient(90deg,#00c853,#00ff88);
   font-weight:700;
   cursor:pointer;
 }
+.hidden{display:none}
+.info-card{
+  background:rgba(0,200,83,.08);
+  border:1px solid rgba(0,200,83,.25);
+  border-radius:16px;
+  padding:18px;
+  margin:12px 0;
+}
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+}
 .logout{
   background:linear-gradient(90deg,#ff5252,#ff7675);
 }
-#chatBox{
-  height:260px;
+#listaParticipantes{
+  max-height:200px;
   overflow:auto;
   font-size:14px;
-  background:#0f102a;
+}
+iframe{
+  width:100%;
+  height:350px;
+  border:none;
+  border-radius:12px;
+}
+
+/* CHAT */
+.chat-box{
+  height:220px;
+  overflow-y:auto;
+  background:#14142a;
   padding:10px;
   border-radius:10px;
+  font-size:14px;
 }
-.msg{
+.chat-msg{
   margin-bottom:6px;
 }
-.msg strong{color:#00ff88}
+.chat-name{
+  color:#00ff88;
+  font-weight:600;
+}
 </style>
 </head>
 
@@ -73,8 +92,9 @@ button{
 <!-- LOGIN -->
 <div class="container" id="loginBox">
   <h2>Entrar na Sala</h2>
+  <p class="subtitle">Acesso exclusivo</p>
   <input id="nome" placeholder="Nome completo">
-  <input id="telefone" placeholder="Telefone">
+  <input id="telefone" placeholder="Telefone com DDD">
   <button onclick="login()">Entrar</button>
   <p id="msg" style="color:#ff6b6b;text-align:center"></p>
 </div>
@@ -82,11 +102,14 @@ button{
 <!-- SALA -->
 <div class="container hidden" id="salaBox">
 
+  <!-- TOPO -->
   <div class="info-card">
     <h3>Participantes Ativos</h3>
     <h2 id="totalAtivos">0</h2>
+    <button onclick="abrirIframe()">Abrir Site</button>
   </div>
 
+  <!-- GRID -->
   <div class="grid">
     <div class="info-card">
       <h3>👥 Participantes</h3>
@@ -94,19 +117,33 @@ button{
     </div>
 
     <div class="info-card">
-      <h3>💬 Chat da Sala</h3>
-      <div id="chatBox"></div>
-      <input id="chatMsg" placeholder="Digite sua mensagem">
-      <button onclick="enviarMsg()">Enviar</button>
+      <h3>🎯 Bolão</h3>
+      <button onclick="participarBolao()">Participar do Bolão</button>
+      <button onclick="exibirBolao()">Exibir Bolão</button>
     </div>
+  </div>
+
+  <!-- CHAT -->
+  <div class="info-card">
+    <h3>💬 Chat da Sala</h3>
+    <div class="chat-box" id="chatBox"></div>
+    <input id="chatMsg" placeholder="Digite sua mensagem">
+    <button onclick="enviarMsg()">Enviar</button>
+  </div>
+
+  <!-- IFRAME -->
+  <div class="info-card hidden" id="iframeBox">
+    <button class="logout" onclick="fecharIframe()">Fechar</button>
+    <iframe src="https://www.zepitaco.com"></iframe>
   </div>
 
   <button class="logout" onclick="logout()">Sair</button>
 </div>
 
 <script>
-const API_URL = 'https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec';
-let chatInterval, statusInterval;
+const API_URL = 'COLE_AQUI_SUA_URL_DO_APPS_SCRIPT';
+let monitorInterval=null;
+let chatInterval=null;
 
 function login(){
   fetch(`${API_URL}?action=loginSala&nome=${nome.value}&telefone=${telefone.value}`)
@@ -124,55 +161,63 @@ function entrarSala(){
   loginBox.classList.add('hidden');
   salaBox.classList.remove('hidden');
   carregarSala();
+  iniciarMonitoramento();
   carregarChat();
-  iniciarLoops();
 }
 
 function carregarSala(){
   fetch(`${API_URL}?action=dashboard`)
   .then(r=>r.json())
-  .then(res=>{
-    totalAtivos.innerText=res.totalAtivos;
+  .then(d=>{
+    totalAtivos.innerText=d.totalAtivos;
     listaParticipantes.innerHTML='';
-    res.participantes.forEach(p=>listaParticipantes.innerHTML+=`• ${p}<br>`);
+    d.participantes.forEach(p=>listaParticipantes.innerHTML+=`• ${p}<br>`);
   });
 }
 
-function enviarMsg(){
-  const texto=chatMsg.value.trim();
-  if(!texto) return;
-  chatMsg.value='';
-  fetch(`${API_URL}?action=enviarMsg&nome=${sessionStorage.getItem('userNome')}&msg=${encodeURIComponent(texto)}`);
-}
-
-function carregarChat(){
-  fetch(`${API_URL}?action=buscarChat`)
-  .then(r=>r.json())
-  .then(res=>{
-    chatBox.innerHTML='';
-    res.forEach(m=>{
-      chatBox.innerHTML+=`<div class="msg"><strong>${m.nome}:</strong> ${m.msg}</div>`;
-    });
-    chatBox.scrollTop=chatBox.scrollHeight;
-  });
-}
-
-function iniciarLoops(){
-  chatInterval=setInterval(carregarChat,3000);
-  statusInterval=setInterval(()=>{
+function iniciarMonitoramento(){
+  monitorInterval=setInterval(()=>{
     fetch(`${API_URL}?action=verificarStatus&id=${sessionStorage.getItem('userId')}`)
     .then(r=>r.json())
-    .then(res=>{if(!res.ativo) logout(true)});
+    .then(s=>{if(!s.ativo) logout(true)});
   },5000);
 }
 
+/* CHAT */
+function carregarChat(){
+  chatInterval=setInterval(()=>{
+    fetch(`${API_URL}?action=getChat`)
+    .then(r=>r.json())
+    .then(msgs=>{
+      chatBox.innerHTML='';
+      msgs.forEach(m=>{
+        chatBox.innerHTML+=
+        `<div class="chat-msg"><span class="chat-name">${m.nome}:</span> ${m.msg}</div>`;
+      });
+      chatBox.scrollTop=chatBox.scrollHeight;
+    });
+  },3000);
+}
+
+function enviarMsg(){
+  if(!chatMsg.value.trim()) return;
+  fetch(`${API_URL}?action=sendChat&nome=${sessionStorage.getItem('userNome')}&msg=${encodeURIComponent(chatMsg.value)}`);
+  chatMsg.value='';
+}
+
+function abrirIframe(){iframeBox.classList.remove('hidden')}
+function fecharIframe(){iframeBox.classList.add('hidden')}
+function participarBolao(){alert('Você entrou no bolão')}
+function exibirBolao(){alert('Bolão exibido')}
 function logout(force){
+  clearInterval(monitorInterval);
   clearInterval(chatInterval);
-  clearInterval(statusInterval);
   sessionStorage.clear();
-  if(force) alert('Acesso encerrado');
+  if(force) alert('Você foi removido');
   location.reload();
 }
+
+if(sessionStorage.getItem('userId')) entrarSala();
 </script>
 
 </body>
