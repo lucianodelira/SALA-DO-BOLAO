@@ -6,6 +6,7 @@
 <title>Sala Exclusiva</title>
 
 <link rel="manifest" href="manifest.json">
+
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
@@ -22,7 +23,7 @@ body{
 .container{
   width:100%;
   max-width:1000px;
-  background:rgba(28,28,44,.85);
+  background:rgba(28,28,44,.8);
   border-radius:20px;
   padding:30px;
 }
@@ -81,22 +82,30 @@ iframe{
 .chat-msg{margin-bottom:6px}
 .chat-name{color:#00ff88;font-weight:600}
 
-/* NOTIFICAÇÃO */
-.notif{
+/* 🔥 BANNER APP */
+#installBanner{
   position:fixed;
-  bottom:20px;
-  right:20px;
+  top:10px;
+  left:50%;
+  transform:translateX(-50%);
   background:#00c853;
   color:#000;
-  padding:14px 18px;
-  border-radius:12px;
+  padding:10px 18px;
+  border-radius:20px;
   font-weight:700;
+  display:none;
   z-index:9999;
+  box-shadow:0 6px 20px rgba(0,0,0,.4);
 }
 </style>
 </head>
 
 <body>
+
+<!-- 📲 BANNER APP -->
+<div id="installBanner">
+  📲 Baixar App
+</div>
 
 <!-- LOGIN -->
 <div class="container" id="loginBox">
@@ -146,13 +155,27 @@ iframe{
 </div>
 
 <script>
-const API_URL = 'https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec';
+const API_URL='https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec';
 
-let monitorInterval=null;
-let chatInterval=null;
-let ultimaQtd=0;
-const audio = new Audio('https://actions.google.com/sounds/v1/notifications/pop.ogg');
+let installPrompt=null;
 
+/* 📲 PWA */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js');
+}
+
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault();
+  installPrompt=e;
+  installBanner.style.display='block';
+});
+
+installBanner.onclick=()=>{
+  installPrompt.prompt();
+  installPrompt.userChoice.then(()=>installBanner.style.display='none');
+};
+
+/* LOGIN */
 function login(){
   fetch(`${API_URL}?action=loginSala&nome=${nome.value}&telefone=${telefone.value}`)
   .then(r=>r.json())
@@ -161,7 +184,7 @@ function login(){
       sessionStorage.setItem('userId',res.id);
       sessionStorage.setItem('userNome',res.nome);
       entrarSala();
-    } else msg.innerText=res.message;
+    }else msg.innerText=res.message;
   });
 }
 
@@ -169,7 +192,6 @@ function entrarSala(){
   loginBox.classList.add('hidden');
   salaBox.classList.remove('hidden');
   carregarSala();
-  iniciarMonitoramento();
   carregarChat();
 }
 
@@ -183,26 +205,12 @@ function carregarSala(){
   });
 }
 
-function iniciarMonitoramento(){
-  monitorInterval=setInterval(()=>{
-    fetch(`${API_URL}?action=verificarStatus&id=${sessionStorage.getItem('userId')}`)
-    .then(r=>r.json())
-    .then(s=>{if(!s.ativo) logout(true)});
-  },5000);
-}
-
-/* CHAT + NOTIFICAÇÃO */
+/* CHAT */
 function carregarChat(){
-  chatInterval=setInterval(()=>{
+  setInterval(()=>{
     fetch(`${API_URL}?action=getChat`)
     .then(r=>r.json())
     .then(msgs=>{
-      if(msgs.length > ultimaQtd){
-        audio.play();
-        notificar('Nova mensagem no chat 💬');
-      }
-      ultimaQtd = msgs.length;
-
       chatBox.innerHTML='';
       msgs.forEach(m=>{
         chatBox.innerHTML+=`<div class="chat-msg"><span class="chat-name">${m.nome}:</span> ${m.msg}</div>`;
@@ -218,29 +226,11 @@ function enviarMsg(){
   chatMsg.value='';
 }
 
-function notificar(txt){
-  const n=document.createElement('div');
-  n.className='notif';
-  n.innerText=txt;
-  document.body.appendChild(n);
-  setTimeout(()=>n.remove(),2500);
-}
-
 function abrirIframe(){iframeBox.classList.remove('hidden')}
 function fecharIframe(){iframeBox.classList.add('hidden')}
 function participarBolao(){alert('Você entrou no bolão')}
 function exibirBolao(){alert('Bolão exibido')}
-function logout(force){
-  clearInterval(monitorInterval);
-  clearInterval(chatInterval);
-  sessionStorage.clear();
-  if(force) alert('Você foi removido');
-  location.reload();
-}
-
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js');
-}
+function logout(){sessionStorage.clear();location.reload()}
 
 if(sessionStorage.getItem('userId')) entrarSala();
 </script>
