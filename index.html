@@ -98,7 +98,6 @@ iframe{
   gap:12px;
   font-weight:700;
   z-index:9999;
-  box-shadow:0 6px 25px rgba(0,0,0,.5);
 }
 #installBanner button{
   background:#000;
@@ -170,28 +169,21 @@ iframe{
 const API_URL='https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec';
 
 let deferredPrompt;
+let totalMensagens = 0;
+
+// 🔊 SOM
+const somMensagem = new Audio('sons/beep.mp3');
+somMensagem.volume = 1.0;
+
+// 🔔 PERMISSÃO NOTIFICAÇÃO
+if ("Notification" in window && Notification.permission !== "granted") {
+  Notification.requestPermission();
+}
 
 /* SERVICE WORKER */
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js');
 }
-
-/* BANNER INSTALAR */
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  document.getElementById('installBanner').style.display = 'flex';
-});
-
-function instalarApp(){
-  document.getElementById('installBanner').style.display='none';
-  deferredPrompt.prompt();
-  deferredPrompt = null;
-}
-
-window.addEventListener('appinstalled', ()=>{
-  document.getElementById('installBanner').style.display='none';
-});
 
 /* LOGIN */
 function login(){
@@ -222,7 +214,7 @@ function carregarSala(){
   });
 }
 
-/* CHAT */
+/* CHAT COM SOM + NOTIFICAÇÃO */
 function carregarChat(){
   setInterval(()=>{
     fetch(`${API_URL}?action=getChat`)
@@ -230,11 +222,33 @@ function carregarChat(){
     .then(msgs=>{
       chatBox.innerHTML='';
       msgs.forEach(m=>{
-        chatBox.innerHTML+=`<div class="chat-msg"><span class="chat-name">${m.nome}:</span> ${m.msg}</div>`;
+        chatBox.innerHTML+=`
+          <div class="chat-msg">
+            <span class="chat-name">${m.nome}:</span> ${m.msg}
+          </div>`;
       });
-      chatBox.scrollTop=chatBox.scrollHeight;
+
+      if (msgs.length > totalMensagens && totalMensagens !== 0) {
+        tocarNotificacao(msgs[msgs.length - 1]);
+      }
+
+      totalMensagens = msgs.length;
+      chatBox.scrollTop = chatBox.scrollHeight;
     });
   },3000);
+}
+
+function tocarNotificacao(msg){
+  // 🔊 som
+  somMensagem.currentTime = 0;
+  somMensagem.play().catch(()=>{});
+
+  // 🔔 notificação
+  if (Notification.permission === "granted") {
+    new Notification("💬 Nova mensagem no chat", {
+      body: `${msg.nome}: ${msg.msg}`
+    });
+  }
 }
 
 function enviarMsg(){
