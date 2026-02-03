@@ -31,7 +31,40 @@ iframe{width:100%;height:350px;border:none;border-radius:12px;}
 </style>
 </head>
 <body>
-<div id="toast"></div>
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+<div id="installBanner">
+  <span>Instale o app na sua tela inicial!</span>
+  <button>Instalar</button>
+</div>  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <div id="toast"></div>
 <div class="container" id="loginBox">
   <h2>Entrar na Sala</h2>
   <p class="subtitle">Acesso exclusivo</p>
@@ -269,6 +302,35 @@ function inicializarFirebase() {
     new Notification(notificationTitle, notificationOptions);
   });
 }
+
+
+
+// Banner de instalação manual
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Impede o banner automático do Chrome
+  e.preventDefault();
+  deferredPrompt = e;
+  
+  // Mostra seu banner personalizado
+  const installBanner = document.getElementById('installBanner');
+  installBanner.style.display = 'flex';
+});
+
+document.getElementById('installBanner')?.querySelector('button').addEventListener('click', async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      console.log('PWA instalado pelo usuário');
+    }
+    deferredPrompt = null;
+    document.getElementById('installBanner').style.display = 'none';
+  }
+});
+
+  
 </script>
 </body>
 </html>
