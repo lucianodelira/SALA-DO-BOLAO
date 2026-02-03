@@ -271,13 +271,17 @@ function inicializarFirebase() {
             console.log('FCM Token gerado:', currentToken);
 
             // Inscreve no topic (método correto do SDK compat)
-            messaging.subscribeToTopic(currentToken, 'sala-bolao')
-              .then(() => {
-                console.log('Inscrito com sucesso no topic: sala-bolao');
-              })
-              .catch(err => {
-                console.error('Erro ao inscrever no topic:', err);
-              });
+
+
+
+
+
+
+
+
+
+
+            
 
             // Opcional: enviar o token para o backend
             // fetch(`${API_URL}?action=saveToken&token=${currentToken}&nome=${sessionStorage.getItem('userNome')}`);
