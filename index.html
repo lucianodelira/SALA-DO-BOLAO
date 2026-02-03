@@ -4,221 +4,179 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sala Exclusiva</title>
-
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#00c853">
-
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{
-  font-family:Poppins,sans-serif;
-  background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);
-  color:#fff;
-  min-height:100vh;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-}
-.container{
-  width:100%;
-  max-width:1000px;
-  background:rgba(28,28,44,.85);
-  border-radius:20px;
-  padding:30px;
-}
+body{font-family:Poppins,sans-serif;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);color:#fff;min-height:100vh;display:flex;justify-content:center;align-items:center;}
+.container{width:100%;max-width:1000px;background:rgba(28,28,44,.85);border-radius:20px;padding:30px;}
 h2,h3{color:#00ff88;text-align:center}
 .subtitle{text-align:center;color:#ccc;margin-bottom:15px}
-input,button{
-  width:100%;
-  padding:12px;
-  border-radius:10px;
-  border:none;
-  margin-top:8px;
-}
+input,button{width:100%;padding:12px;border-radius:10px;border:none;margin-top:8px;}
 input{background:#1f1f3a;color:#fff}
-button{
-  background:linear-gradient(90deg,#00c853,#00ff88);
-  font-weight:700;
-  cursor:pointer;
-}
+button{background:linear-gradient(90deg,#00c853,#00ff88);font-weight:700;cursor:pointer;}
 .hidden{display:none}
-.info-card{
-  background:rgba(0,200,83,.08);
-  border:1px solid rgba(0,200,83,.25);
-  border-radius:16px;
-  padding:18px;
-  margin:12px 0;
-}
-.grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:16px;
-}
-.logout{
-  background:linear-gradient(90deg,#ff5252,#ff7675);
-}
-.chat-box{
-  height:220px;
-  overflow-y:auto;
-  background:#14142a;
-  padding:10px;
-  border-radius:10px;
-  font-size:14px;
-}
+.info-card{background:rgba(0,200,83,.08);border:1px solid rgba(0,200,83,.25);border-radius:16px;padding:18px;margin:12px 0;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.logout{background:linear-gradient(90deg,#ff5252,#ff7675);}
+#listaParticipantes{max-height:200px;overflow:auto;font-size:14px;}
+iframe{width:100%;height:350px;border:none;border-radius:12px;}
+.chat-box{height:220px;overflow-y:auto;background:#14142a;padding:10px;border-radius:10px;font-size:14px;}
+.chat-msg{margin-bottom:6px}
 .chat-name{color:#00ff88;font-weight:600}
-#toast{
-  position:fixed;
-  top:20px;
-  right:20px;
-  background:#00c853;
-  color:#000;
-  padding:14px 20px;
-  border-radius:14px;
-  font-weight:700;
-  display:none;
-  z-index:9999;
-}
+#toast{position:fixed;top:20px;right:20px;background:#00c853;color:#000;padding:14px 20px;border-radius:14px;font-weight:700;display:none;z-index:9999;}
+#installBanner{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#00c853;color:#000;padding:12px 18px;border-radius:18px;display:none;gap:12px;font-weight:700;z-index:9999;}
+#installBanner button{background:#000;color:#00ff88;border:none;padding:6px 12px;border-radius:12px;font-weight:700;}
 </style>
 </head>
-
 <body>
-
 <div id="toast"></div>
-
 <div class="container" id="loginBox">
   <h2>Entrar na Sala</h2>
+  <p class="subtitle">Acesso exclusivo</p>
   <input id="nome" placeholder="Nome completo">
   <input id="telefone" placeholder="Telefone com DDD">
   <button onclick="login()">Entrar</button>
   <p id="msg" style="color:#ff6b6b;text-align:center"></p>
 </div>
-
 <div class="container hidden" id="salaBox">
-
   <div class="info-card">
     <h3>Participantes Ativos</h3>
     <h2 id="totalAtivos">0</h2>
+    <button onclick="abrirIframe()">Abrir Site</button>
   </div>
-
+  <div class="grid">
+    <div class="info-card">
+      <h3>👥 Participantes</h3>
+      <div id="listaParticipantes"></div>
+    </div>
+    <div class="info-card">
+      <h3>🎯 Bolão</h3>
+      <button onclick="participarBolao()">Participar</button>
+      <button onclick="exibirBolao()">Exibir</button>
+    </div>
+  </div>
   <div class="info-card">
     <h3>💬 Chat da Sala</h3>
     <div class="chat-box" id="chatBox"></div>
     <input id="chatMsg" placeholder="Digite sua mensagem">
     <button onclick="enviarMsg()">Enviar</button>
   </div>
-
+  <div class="info-card hidden" id="iframeBox">
+    <button class="logout" onclick="fecharIframe()">Fechar</button>
+    <iframe src="https://www.zepitaco.com"></iframe>
+  </div>
   <button class="logout" onclick="logout()">Sair</button>
 </div>
 
-<!-- ================== APP SCRIPT ================== -->
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec";
-
+const API_URL = 'https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec'; // atualize se necessário
 let totalMensagens = 0;
 let carregouChat = false;
+let audioLiberado = false;
 
-function login(){
-  fetch(`${API_URL}?action=loginSala&nome=${nome.value}&telefone=${telefone.value}`)
-  .then(r=>r.json())
-  .then(res=>{
-    if(res.success){
-      sessionStorage.setItem("userNome", res.nome);
-      entrarSala();
-    } else {
-      msg.innerText = res.message;
-    }
-  });
+const somMensagem = new Audio('sons/beep.mp3');
+somMensagem.volume = 1;
+
+if ("Notification" in window && Notification.permission !== "granted") {
+  Notification.requestPermission();
 }
 
-function entrarSala(){
-  loginBox.classList.add("hidden");
-  salaBox.classList.remove("hidden");
+function liberarSom() {
+  if (audioLiberado) return;
+  somMensagem.play().then(() => {
+    somMensagem.pause();
+    somMensagem.currentTime = 0;
+    audioLiberado = true;
+  }).catch(() => {});
+}
+
+function login() {
+  liberarSom();
+  const nomeEl = document.getElementById('nome');
+  const telEl = document.getElementById('telefone');
+  const msgEl = document.getElementById('msg');
+
+  fetch(`${API_URL}?action=loginSala&nome=${encodeURIComponent(nomeEl.value)}&telefone=${encodeURIComponent(telEl.value)}`)
+    .then(r => r.json())
+    .then(res => {
+      if (res.success) {
+        sessionStorage.setItem('userNome', res.nome);
+        entrarSala();
+      } else {
+        msgEl.innerText = res.message;
+      }
+    }).catch(() => msgEl.innerText = 'Erro na conexão');
+}
+
+function entrarSala() {
+  document.getElementById('loginBox').classList.add('hidden');
+  document.getElementById('salaBox').classList.remove('hidden');
   carregarSala();
   carregarChat();
-  registrarPush();
 }
 
-function carregarSala(){
+function carregarSala() {
   fetch(`${API_URL}?action=dashboard`)
-  .then(r=>r.json())
-  .then(d=>{
-    totalAtivos.innerText = d.totalAtivos;
-  });
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('totalAtivos').innerText = d.totalAtivos;
+      document.getElementById('listaParticipantes').innerHTML = d.participantes.join('<br>');
+    });
 }
 
-function carregarChat(){
-  setInterval(()=>{
+function carregarChat() {
+  setInterval(() => {
     fetch(`${API_URL}?action=getChat`)
-    .then(r=>r.json())
-    .then(msgs=>{
-      chatBox.innerHTML="";
-      msgs.forEach(m=>{
-        chatBox.innerHTML += `<div><b>${m.nome}:</b> ${m.msg}</div>`;
+      .then(r => r.json())
+      .then(msgs => {
+        const chatBox = document.getElementById('chatBox');
+        chatBox.innerHTML = '';
+        msgs.forEach(m => {
+          chatBox.innerHTML += `<div class="chat-msg"><span class="chat-name">${m.nome}:</span> ${m.msg}</div>`;
+        });
+        if (carregouChat && msgs.length > totalMensagens) {
+          notificar(msgs[msgs.length-1]);
+        }
+        carregouChat = true;
+        totalMensagens = msgs.length;
+        chatBox.scrollTop = chatBox.scrollHeight;
       });
-
-      if(carregouChat && msgs.length > totalMensagens){
-        notificar(msgs[msgs.length-1]);
-      }
-
-      carregouChat = true;
-      totalMensagens = msgs.length;
-      chatBox.scrollTop = chatBox.scrollHeight;
-    });
-  },3000);
+  }, 3000);
 }
 
-function enviarMsg(){
-  if(!chatMsg.value.trim()) return;
-  fetch(`${API_URL}?action=sendChat&nome=${sessionStorage.getItem("userNome")}&msg=${encodeURIComponent(chatMsg.value)}`);
-  chatMsg.value="";
-}
-
-function notificar(msg){
-  if(Notification.permission==="granted"){
-    new Notification("Nova mensagem",{
-      body:`${msg.nome}: ${msg.msg}`
-    });
+function notificar(msg) {
+  if (audioLiberado) {
+    somMensagem.currentTime = 0;
+    somMensagem.play().catch(() => {});
   }
-}
+  if (navigator.vibrate) navigator.vibrate([200,100,200]);
 
-function logout(){
-  sessionStorage.clear();
-  location.reload();
-}
-</script>
-
-<!-- ================== FIREBASE ================== -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
-
-<script>
-firebase.initializeApp({
-  apiKey: "AIzaSyA7PTBoaKVAxXrpBNWSzbin5XGkbQBGrWY",
-  authDomain: "sala-bolao.firebaseapp.com",
-  projectId: "sala-bolao",
-  messagingSenderId: "19354677995",
-  appId: "1:19354677995:web:374ae89b72107e8b0844ae"
-});
-
-const messaging = firebase.messaging();
-
-navigator.serviceWorker.register("firebase-messaging-sw.js");
-
-async function registrarPush(){
-  const permission = await Notification.requestPermission();
-  if(permission !== "granted") return;
-
-  const token = await messaging.getToken({
-    vapidKey: "BKeHFoXc6yproB-mast7RU_-cBuKMZCLkV7oW3YCViflGyjktC12TgNUzB1ycOzxmHB8YfHtLl0haKHAmpCDnN4"
-  });
-
-  if(token){
-    fetch(`${API_URL}?action=saveToken&token=${token}&nome=${sessionStorage.getItem("userNome")}`);
+  if (Notification.permission === "granted" && document.hidden) {
+    new Notification("💬 Nova mensagem", { body: `${msg.nome}: ${msg.msg}` });
   }
-}
-</script>
 
+  const toast = document.getElementById('toast');
+  toast.innerText = `💬 ${msg.nome}: ${msg.msg}`;
+  toast.style.display = 'block';
+  setTimeout(() => toast.style.display = 'none', 4000);
+}
+
+function enviarMsg() {
+  const input = document.getElementById('chatMsg');
+  if (!input.value.trim()) return;
+
+  const nome = sessionStorage.getItem('userNome');
+  fetch(`${API_URL}?action=sendChat&nome=${encodeURIComponent(nome)}&msg=${encodeURIComponent(input.value)}`);
+  input.value = '';
+}
+
+function abrirIframe() { document.getElementById('iframeBox').classList.remove('hidden'); }
+function fecharIframe() { document.getElementById('iframeBox').classList.add('hidden'); }
+function participarBolao() { alert('Você entrou no bolão'); }
+function exibirBolao() { alert('Bolão exibido'); }
+function logout() { sessionStorage.clear(); location.reload(); }
+</script>
 </body>
 </html>
