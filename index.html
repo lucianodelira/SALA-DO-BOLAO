@@ -1,106 +1,111 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sala Exclusiva</title>
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#00c853">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sala Exclusiva</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00c853">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <!-- Firebase -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-    import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging.js";
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyA7PTBoaKVAxXrpBNWSzbin5XGkbQBGrWY",
-      authDomain: "sala-bolao.firebaseapp.com",
-      projectId: "sala-bolao",
-      storageBucket: "sala-bolao.appspot.com",
-      messagingSenderId: "19354677995",
-      appId: "1:19354677995:web:374ae89b72107e8b0844ae",
-      measurementId: "G-C09QTEFN5L"
-    };
+const firebaseConfig = {
+  apiKey: "AIzaSyA7PTBoaKVAxXrpBNWSzbin5XGkbQBGrWY",
+  authDomain: "sala-bolao.firebaseapp.com",
+  projectId: "sala-bolao",
+  storageBucket: "sala-bolao.appspot.com",
+  messagingSenderId: "19354677995",
+  appId: "1:19354677995:web:374ae89b72107e8b0844ae",
+  measurementId: "G-C09QTEFN5L"
+};
 
-    const app = initializeApp(firebaseConfig);
-    const messaging = getMessaging(app);
+const app = initializeApp(firebaseConfig);
+const messaging = getMessaging(app);
 
-    window.messaging = messaging;
-    window.getToken = getToken;
-    window.onMessage = onMessage;
+window.messaging = messaging;
+window.getToken = getToken;
+window.onMessage = onMessage;
 
-    const API_URL = 'https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec';
 
-    // Permissão de notificações
-    Notification.requestPermission().then(p => {
-      if (p === 'granted') {
-        console.log('Permissão concedida');
-      } else {
-        console.warn('Permissão negada');
-      }
-    });
+// ==========================================
+// SERVICE WORKER
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(reg => console.log('SW registrado', reg)).catch(console.error);
+}
 
-    // Recebe notificações em foreground
-    window.onMessage(messaging, payload => {
-      console.log('Mensagem FCM recebida:', payload);
-      const title = payload.notification?.title || "Nova mensagem";
-      const body = payload.notification?.body || payload.data?.mensagem || "";
-      new Notification(title, { body, icon: 'icon.png' });
+// ==========================================
+// PERMISSÃO DE NOTIFICAÇÕES
+Notification.requestPermission().then(p => {
+  if (p === 'granted') console.log('Permissão de notificações concedida');
+  else console.warn('Permissão negada');
+});
 
-      const audio = new Audio('alerta.mp3'); // arquivo de som
-      audio.play().catch(err => console.error('Erro ao tocar som:', err));
-    });
+// ==========================================
+// RECEBER NOTIFICAÇÕES EM FOREGROUND
+window.onMessage(messaging, payload => {
+  console.log('Mensagem FCM recebida:', payload);
+  const title = payload.notification?.title || "Nova mensagem";
+  const body = payload.notification?.body || payload.data?.mensagem || "";
 
-    // Registrar token no backend
-    function inscreverNoTopic() {
-      getToken(messaging, { vapidKey: 'pvhHVsA80Jy8AqtM52PtxdhApalEYg_hZTL6hN3Pve4' })
-        .then(token => {
-          if (!token) return console.warn('Token FCM não obtido');
-          console.log('Token FCM:', token);
-          fetch(`${API_URL}?action=registrarToken`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId: sessionStorage.getItem('userId'),
-              nome: sessionStorage.getItem('userNome'),
-              fcmToken: token
-            })
-          })
-          .then(r => r.json())
-          .then(res => console.log('Token registrado:', res))
-          .catch(err => console.error('Erro ao registrar token:', err));
+  // Notificação visual
+  new Notification(title, { body, icon: 'icon.png' });
+
+  // Som
+  const audio = new Audio('alerta.mp3');
+  audio.play().catch(err => console.error('Erro tocar som:', err));
+});
+
+// ==========================================
+// REGISTRAR TOKEN FCM
+function inscreverNoTopic() {
+  getToken(messaging, { vapidKey: 'pvhHVsA80Jy8AqtM52PtxdhApalEYg_hZTL6hN3Pve4' })
+    .then(token => {
+      if (!token) return console.warn('Token FCM não obtido');
+      console.log('Token FCM:', token);
+
+      fetch(`${API_URL}?action=registrarToken`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          userId: sessionStorage.getItem('userId'),
+          nome: sessionStorage.getItem('userNome'),
+          fcmToken: token
         })
-        .catch(err => console.error('Erro getToken:', err));
-    }
+      }).then(r => r.json()).then(res => console.log('Token registrado:', res))
+        .catch(err => console.error('Erro registrar token:', err));
+    }).catch(err => console.error('Erro getToken:', err));
+}
+window.inscreverNoTopic = inscreverNoTopic;
+</script>
 
-    window.inscreverNoTopic = inscreverNoTopic;
-  </script>
-
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:Poppins,sans-serif;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);color:#fff;min-height:100vh;display:flex;justify-content:center;align-items:center;}
-    .container{width:100%;max-width:1000px;background:rgba(28,28,44,.85);border-radius:20px;padding:30px;}
-    h2,h3{color:#00ff88;text-align:center}
-    .subtitle{text-align:center;color:#ccc;margin-bottom:15px}
-    input,button{width:100%;padding:12px;border-radius:10px;border:none;margin-top:8px;}
-    input{background:#1f1f3a;color:#fff}
-    button{background:linear-gradient(90deg,#00c853,#00ff88);font-weight:700;cursor:pointer;}
-    .hidden{display:none}
-    .info-card{background:rgba(0,200,83,.08);border:1px solid rgba(0,200,83,.25);border-radius:16px;padding:18px;margin:12px 0;}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-    .logout{background:linear-gradient(90deg,#ff5252,#ff7675);}
-    #listaParticipantes{max-height:200px;overflow:auto;font-size:14px;}
-    iframe{width:100%;height:350px;border:none;border-radius:12px;}
-    .chat-box{height:220px;overflow-y:auto;background:#14142a;padding:10px;border-radius:10px;font-size:14px;}
-    .chat-msg{margin-bottom:6px}
-    .chat-name{color:#00ff88;font-weight:600}
-    #installBanner{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#00c853;color:#000;padding:12px 18px;border-radius:18px;display:none;align-items:center;gap:12px;font-weight:700;z-index:9999;box-shadow:0 6px 25px rgba(0,0,0,.5);}
-    #installBanner button{background:#000;color:#00ff88;border:none;padding:6px 12px;border-radius:12px;font-weight:700;}
-  </style>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Poppins,sans-serif;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);color:#fff;min-height:100vh;display:flex;justify-content:center;align-items:center;}
+.container{width:100%;max-width:1000px;background:rgba(28,28,44,.85);border-radius:20px;padding:30px;}
+h2,h3{color:#00ff88;text-align:center}
+.subtitle{text-align:center;color:#ccc;margin-bottom:15px}
+input,button{width:100%;padding:12px;border-radius:10px;border:none;margin-top:8px;}
+input{background:#1f1f3a;color:#fff}
+button{background:linear-gradient(90deg,#00c853,#00ff88);font-weight:700;cursor:pointer;}
+.hidden{display:none}
+.info-card{background:rgba(0,200,83,.08);border:1px solid rgba(0,200,83,.25);border-radius:16px;padding:18px;margin:12px 0;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.logout{background:linear-gradient(90deg,#ff5252,#ff7675);}
+#listaParticipantes{max-height:200px;overflow:auto;font-size:14px;}
+iframe{width:100%;height:350px;border:none;border-radius:12px;}
+.chat-box{height:220px;overflow-y:auto;background:#14142a;padding:10px;border-radius:10px;font-size:14px;}
+.chat-msg{margin-bottom:6px}
+.chat-name{color:#00ff88;font-weight:600}
+#installBanner{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#00c853;color:#000;padding:12px 18px;border-radius:18px;display:none;align-items:center;gap:12px;font-weight:700;z-index:9999;box-shadow:0 6px 25px rgba(0,0,0,.5);}
+#installBanner button{background:#000;color:#00ff88;border:none;padding:6px 12px;border-radius:12px;font-weight:700;}
+</style>
 </head>
-<body>
 
+<body>
 <div id="installBanner">
   <span>📲 Baixar App</span>
   <button onclick="instalarApp()">Instalar</button>
@@ -146,95 +151,67 @@
 </div>
 
 <script>
-// =============================================
-// SERVICE WORKER
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(err => console.error('Erro ao registrar SW:', err));
-}
-
+// ==========================================
 // BANNER INSTALAR
 let deferredPrompt;
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredPrompt = e;
-  document.getElementById('installBanner').style.display = 'flex';
-});
-function instalarApp() {
-  document.getElementById('installBanner').style.display = 'none';
-  if (deferredPrompt) {
-    deferredPrompt.prompt();
-    deferredPrompt.userChoice.then(() => deferredPrompt = null);
-  }
-}
-window.addEventListener('appinstalled', () => document.getElementById('installBanner').style.display = 'none');
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt=e; document.getElementById('installBanner').style.display='flex'; });
+function instalarApp() { document.getElementById('installBanner').style.display='none'; if(deferredPrompt){ deferredPrompt.prompt(); deferredPrompt.userChoice.then(()=>deferredPrompt=null); } }
+window.addEventListener('appinstalled', ()=>document.getElementById('installBanner').style.display='none');
 
-// =============================================
+// ==========================================
 // LOGIN
 function login() {
   const nome = document.getElementById('nome').value.trim();
   const telefone = document.getElementById('telefone').value.trim();
   const msg = document.getElementById('msg');
-  if (!nome || !telefone) { msg.innerText = "Preencha nome e telefone"; return; }
+  if(!nome||!telefone){ msg.innerText="Preencha nome e telefone"; return; }
 
   fetch(`${API_URL}?action=loginSala&nome=${encodeURIComponent(nome)}&telefone=${encodeURIComponent(telefone)}`)
-    .then(r => r.json())
-    .then(res => {
-      if (res.success) {
-        sessionStorage.setItem('userId', res.id);
-        sessionStorage.setItem('userNome', res.nome);
-        entrarSala();
-      } else msg.innerText = res.message || "Acesso negado";
-    }).catch(err => { msg.innerText = "Erro de conexão"; console.error(err); });
+    .then(r=>r.json())
+    .then(res=>{
+      if(res.success){ sessionStorage.setItem('userId',res.id); sessionStorage.setItem('userNome',res.nome); entrarSala(); }
+      else msg.innerText=res.message||"Acesso negado";
+    }).catch(err=>{ msg.innerText="Erro de conexão"; console.error(err); });
 }
 
 function entrarSala() {
   document.getElementById('loginBox').classList.add('hidden');
   document.getElementById('salaBox').classList.remove('hidden');
-  carregarSala();
-  carregarChat();
-  inscreverNoTopic();
+  carregarSala(); carregarChat(); inscreverNoTopic();
 }
 
-// =============================================
+// ==========================================
 // SALA / CHAT
 function carregarSala() {
-  fetch(`${API_URL}?action=dashboard`)
-    .then(r => r.json())
-    .then(d => {
-      document.getElementById('totalAtivos').innerText = d.totalAtivos;
-      document.getElementById('listaParticipantes').innerHTML = d.participantes.join('<br>');
-    });
+  fetch(`${API_URL}?action=dashboard`).then(r=>r.json()).then(d=>{
+    document.getElementById('totalAtivos').innerText=d.totalAtivos;
+    document.getElementById('listaParticipantes').innerHTML=d.participantes.join('<br>');
+  });
 }
 
 function carregarChat() {
-  setInterval(() => {
-    fetch(`${API_URL}?action=getChat`)
-      .then(r => r.json())
-      .then(msgs => {
-        const chatBox = document.getElementById('chatBox');
-        chatBox.innerHTML = '';
-        msgs.forEach(m => chatBox.innerHTML += `<div class="chat-msg"><span class="chat-name">${m.nome}:</span> ${m.msg}</div>`);
-        chatBox.scrollTop = chatBox.scrollHeight;
-      });
-  }, 3000);
+  setInterval(()=>{
+    fetch(`${API_URL}?action=getChat`).then(r=>r.json()).then(msgs=>{
+      const chatBox=document.getElementById('chatBox'); chatBox.innerHTML='';
+      msgs.forEach(m=>chatBox.innerHTML+=`<div class="chat-msg"><span class="chat-name">${m.nome}:</span> ${m.msg}</div>`);
+      chatBox.scrollTop=chatBox.scrollHeight;
+    });
+  },3000);
 }
 
 function enviarMsg() {
-  const input = document.getElementById('chatMsg');
-  const msg = input.value.trim();
-  if (!msg) return;
+  const input=document.getElementById('chatMsg'); const msg=input.value.trim();
+  if(!msg) return;
   fetch(`${API_URL}?action=sendChat&nome=${encodeURIComponent(sessionStorage.getItem('userNome'))}&msg=${encodeURIComponent(msg)}`);
-  input.value = '';
+  input.value='';
 }
 
-function abrirIframe() { document.getElementById('iframeBox').classList.remove('hidden'); }
-function fecharIframe() { document.getElementById('iframeBox').classList.add('hidden'); }
-function participarBolao() { alert('Você entrou no bolão'); }
-function exibirBolao() { alert('Bolão exibido'); }
-function logout() { sessionStorage.clear(); location.reload(); }
-
-// Auto-login
-if (sessionStorage.getItem('userId')) entrarSala();
+function abrirIframe(){document.getElementById('iframeBox').classList.remove('hidden');}
+function fecharIframe(){document.getElementById('iframeBox').classList.add('hidden');}
+function participarBolao(){alert('Você entrou no bolão');}
+function exibirBolao(){alert('Bolão exibido');}
+function logout(){sessionStorage.clear(); location.reload();}
+if(sessionStorage.getItem('userId')) entrarSala();
 </script>
 </body>
 </html>
