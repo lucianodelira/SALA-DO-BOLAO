@@ -12,6 +12,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging.js";
 
+const API_URL = 'https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec';
+
 const firebaseConfig = {
   apiKey: "AIzaSyA7PTBoaKVAxXrpBNWSzbin5XGkbQBGrWY",
   authDomain: "sala-bolao.firebaseapp.com",
@@ -25,38 +27,19 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const messaging = getMessaging(app);
 
-window.messaging = messaging;
-window.getToken = getToken;
-window.onMessage = onMessage;
-
-const API_URL = 'https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec';
-
 // ==========================================
 // SERVICE WORKER
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').then(reg => console.log('SW registrado', reg)).catch(console.error);
+  navigator.serviceWorker.register('sw.js')
+    .then(reg => console.log('SW registrado', reg))
+    .catch(console.error);
 }
 
 // ==========================================
 // PERMISSÃO DE NOTIFICAÇÕES
-Notification.requestPermission().then(p => {
-  if (p === 'granted') console.log('Permissão de notificações concedida');
+Notification.requestPermission().then(p=>{
+  if(p==='granted') console.log('Permissão de notificações concedida');
   else console.warn('Permissão negada');
-});
-
-// ==========================================
-// RECEBER NOTIFICAÇÕES EM FOREGROUND
-window.onMessage(messaging, payload => {
-  console.log('Mensagem FCM recebida:', payload);
-  const title = payload.notification?.title || "Nova mensagem";
-  const body = payload.notification?.body || payload.data?.mensagem || "";
-
-  // Notificação visual
-  new Notification(title, { body, icon: 'icon.png' });
-
-  // Som
-  const audio = new Audio('alerta.mp3');
-  audio.play().catch(err => console.error('Erro tocar som:', err));
 });
 
 // ==========================================
@@ -64,7 +47,7 @@ window.onMessage(messaging, payload => {
 function inscreverNoTopic() {
   getToken(messaging, { vapidKey: 'pvhHVsA80Jy8AqtM52PtxdhApalEYg_hZTL6hN3Pve4' })
     .then(token => {
-      if (!token) return console.warn('Token FCM não obtido');
+      if(!token) return console.warn('Token FCM não obtido');
       console.log('Token FCM:', token);
 
       fetch(`${API_URL}?action=registrarToken`, {
@@ -75,11 +58,26 @@ function inscreverNoTopic() {
           nome: sessionStorage.getItem('userNome'),
           fcmToken: token
         })
-      }).then(r => r.json()).then(res => console.log('Token registrado:', res))
-        .catch(err => console.error('Erro registrar token:', err));
+      })
+      .then(r => r.json())
+      .then(res => console.log('Token registrado:', res))
+      .catch(err => console.error('Erro registrar token:', err));
     }).catch(err => console.error('Erro getToken:', err));
 }
 window.inscreverNoTopic = inscreverNoTopic;
+
+// ==========================================
+// RECEBER NOTIFICAÇÕES EM FOREGROUND
+onMessage(messaging, payload => {
+  console.log('Mensagem FCM recebida:', payload);
+  const title = payload.notification?.title || "Nova mensagem";
+  const body = payload.notification?.body || payload.data?.mensagem || "";
+
+  new Notification(title, { body, icon: 'icon.png' });
+
+  const audio = new Audio('alerta.mp3');
+  audio.play().catch(err => console.warn('Erro tocar som:', err));
+});
 </script>
 
 <style>
@@ -154,9 +152,18 @@ iframe{width:100%;height:350px;border:none;border-radius:12px;}
 // ==========================================
 // BANNER INSTALAR
 let deferredPrompt;
-window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt=e; document.getElementById('installBanner').style.display='flex'; });
-function instalarApp() { document.getElementById('installBanner').style.display='none'; if(deferredPrompt){ deferredPrompt.prompt(); deferredPrompt.userChoice.then(()=>deferredPrompt=null); } }
-window.addEventListener('appinstalled', ()=>document.getElementById('installBanner').style.display='none');
+window.addEventListener('beforeinstallprompt', e => { 
+  e.preventDefault(); 
+  deferredPrompt=e; 
+  document.getElementById('installBanner').style.display='flex'; 
+});
+function instalarApp() { 
+  document.getElementById('installBanner').style.display='none'; 
+  if(deferredPrompt){ 
+    deferredPrompt.prompt(); 
+    deferredPrompt.userChoice.then(()=>deferredPrompt=null); 
+  } 
+}
 
 // ==========================================
 // LOGIN
@@ -169,15 +176,23 @@ function login() {
   fetch(`${API_URL}?action=loginSala&nome=${encodeURIComponent(nome)}&telefone=${encodeURIComponent(telefone)}`)
     .then(r=>r.json())
     .then(res=>{
-      if(res.success){ sessionStorage.setItem('userId',res.id); sessionStorage.setItem('userNome',res.nome); entrarSala(); }
+      console.log('Login response:', res);
+      if(res.success){ 
+        sessionStorage.setItem('userId',res.id); 
+        sessionStorage.setItem('userNome',res.nome); 
+        entrarSala(); 
+      }
       else msg.innerText=res.message||"Acesso negado";
-    }).catch(err=>{ msg.innerText="Erro de conexão"; console.error(err); });
+    })
+    .catch(err=>{ msg.innerText="Erro de conexão"; console.error(err); });
 }
 
 function entrarSala() {
   document.getElementById('loginBox').classList.add('hidden');
   document.getElementById('salaBox').classList.remove('hidden');
-  carregarSala(); carregarChat(); inscreverNoTopic();
+  carregarSala(); 
+  carregarChat(); 
+  inscreverNoTopic();
 }
 
 // ==========================================
@@ -186,23 +201,28 @@ function carregarSala() {
   fetch(`${API_URL}?action=dashboard`).then(r=>r.json()).then(d=>{
     document.getElementById('totalAtivos').innerText=d.totalAtivos;
     document.getElementById('listaParticipantes').innerHTML=d.participantes.join('<br>');
-  });
+  }).catch(console.error);
 }
 
 function carregarChat() {
   setInterval(()=>{
     fetch(`${API_URL}?action=getChat`).then(r=>r.json()).then(msgs=>{
-      const chatBox=document.getElementById('chatBox'); chatBox.innerHTML='';
-      msgs.forEach(m=>chatBox.innerHTML+=`<div class="chat-msg"><span class="chat-name">${m.nome}:</span> ${m.msg}</div>`);
+      const chatBox=document.getElementById('chatBox'); 
+      chatBox.innerHTML='';
+      msgs.forEach(m=>{
+        chatBox.innerHTML+=`<div class="chat-msg"><span class="chat-name">${m.nome}:</span> ${m.msg}</div>`;
+      });
       chatBox.scrollTop=chatBox.scrollHeight;
-    });
+    }).catch(console.error);
   },3000);
 }
 
 function enviarMsg() {
-  const input=document.getElementById('chatMsg'); const msg=input.value.trim();
+  const input=document.getElementById('chatMsg'); 
+  const msg=input.value.trim();
   if(!msg) return;
-  fetch(`${API_URL}?action=sendChat&nome=${encodeURIComponent(sessionStorage.getItem('userNome'))}&msg=${encodeURIComponent(msg)}`);
+  fetch(`${API_URL}?action=sendChat&nome=${encodeURIComponent(sessionStorage.getItem('userNome'))}&msg=${encodeURIComponent(msg)}`)
+    .catch(console.error);
   input.value='';
 }
 
@@ -211,27 +231,9 @@ function fecharIframe(){document.getElementById('iframeBox').classList.add('hidd
 function participarBolao(){alert('Você entrou no bolão');}
 function exibirBolao(){alert('Bolão exibido');}
 function logout(){sessionStorage.clear(); location.reload();}
+
+// Entrada automática se já estiver logado
 if(sessionStorage.getItem('userId')) entrarSala();
-
-
-
-
-// Receber mensagens em foreground
-window.onMessage(window.messaging, payload => {
-  const title = payload.notification?.title || "Nova mensagem";
-  const body = payload.notification?.body || payload.data?.mensagem || "";
-
-  new Notification(title, { body, icon: 'icon.png' });
-
-  // Som de alerta
-  const audio = new Audio('alerta.mp3');
-  audio.play().catch(err => console.warn('Erro tocar som:', err));
-});
-
-
-
-
-  
 </script>
 </body>
 </html>
