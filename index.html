@@ -2,10 +2,8 @@
 <html lang="pt-BR">
 <head>
 
-<!-- Firebase App (obrigatório) -->
-<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
-<!-- Firebase Messaging -->
-<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js"></script>
 
 
   
@@ -164,97 +162,10 @@ function entrarSala() {
   document.getElementById('salaBox').classList.remove('hidden');
   carregarSala();
   carregarChat();
-  iniciarFirebaseEMensagens();   // ← aqui começa a parte do FCM
+  inicializarFirebaseCorreto();
 }
 
-// =============================================
-// DASHBOARD E CHAT (mantido igual, só organizei)
-function carregarSala() {
-  fetch(`${API_URL}?action=dashboard`)
-    .then(r => r.json())
-    .then(d => {
-      document.getElementById('totalAtivos').innerText = d.totalAtivos;
-      document.getElementById('listaParticipantes').innerHTML = d.participantes.join('<br>');
-    })
-    .catch(err => console.log('Erro ao carregar dashboard', err));
-}
-
-function carregarChat() {
-  setInterval(() => {
-    fetch(`${API_URL}?action=getChat`)
-      .then(r => r.json())
-      .then(msgs => {
-        const chatBox = document.getElementById('chatBox');
-        chatBox.innerHTML = '';
-        msgs.forEach(m => {
-          chatBox.innerHTML += `<div class="chat-msg"><span class="chat-name">${m.nome}:</span> ${m.msg}</div>`;
-        });
-
-        if (carregouChat && msgs.length > totalMensagens) {
-          notificar(msgs[msgs.length - 1]);
-        }
-
-        carregouChat = true;
-        totalMensagens = msgs.length;
-        chatBox.scrollTop = chatBox.scrollHeight;
-      })
-      .catch(err => console.log('Erro ao carregar chat', err));
-  }, 3000);
-}
-
-function notificar(msg) {
-  if (audioLiberado) {
-    somMensagem.currentTime = 0;
-    somMensagem.play().catch(() => {});
-  }
-  if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-
-  if (Notification.permission === "granted" && document.hidden) {
-    new Notification("💬 Nova mensagem", {
-      body: `${msg.nome}: ${msg.msg}`
-    });
-  }
-
-  const toast = document.getElementById('toast');
-  toast.innerText = `💬 ${msg.nome}: ${msg.msg}`;
-  toast.style.display = 'block';
-  setTimeout(() => toast.style.display = 'none', 4000);
-}
-
-function enviarMsg() {
-  const input = document.getElementById('chatMsg');
-  if (!input.value.trim()) return;
-
-  const nome = sessionStorage.getItem('userNome');
-  fetch(`${API_URL}?action=sendChat&nome=${encodeURIComponent(nome)}&msg=${encodeURIComponent(input.value)}`)
-    .then(() => input.value = '')
-    .catch(err => console.log('Erro ao enviar mensagem', err));
-}
-
-// =============================================
-// FUNÇÕES AUXILIARES
-function abrirIframe() { document.getElementById('iframeBox').classList.remove('hidden'); }
-function fecharIframe() { document.getElementById('iframeBox').classList.add('hidden'); }
-function participarBolao() { alert('Você entrou no bolão'); }
-function exibirBolao() { alert('Bolão exibido'); }
-function logout() { sessionStorage.clear(); location.reload(); }
-
-// =============================================
-// FIREBASE – CLIENT SIDE (corrigido)
-function iniciarFirebaseEMensagens() {
-  // Carrega o Firebase de forma compatível (sem type="module")
-  const script = document.createElement('script');
-  script.src = "https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js";
-  script.onload = () => {
-    const messagingScript = document.createElement('script');
-    messagingScript.src = "https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js";
-    messagingScript.onload = inicializarFirebase;
-    document.head.appendChild(messagingScript);
-  };
-  document.head.appendChild(script);
-}
-
-function inicializarFirebase() {
+function inicializarFirebaseCorreto() {
   const firebaseConfig = {
     apiKey:            "AIzaSyA7PTBoaKVAxXrpBNWSzbin5XGkbQBGrWY",
     authDomain:        "sala-bolao.firebaseapp.com",
@@ -268,92 +179,53 @@ function inicializarFirebase() {
   firebase.initializeApp(firebaseConfig);
   const messaging = firebase.messaging();
 
-  // Solicita permissão e obtém token + inscrição no topic
+  // Solicita permissão e inscreve no topic
   Notification.requestPermission().then(permission => {
     if (permission === 'granted') {
-      console.log('Permissão de notificação concedida');
+      console.log("Permissão concedida");
 
-      messaging.getToken({ vapidKey: 'pvhHVsA80Jy8AqtM52PtxdhApalEYg_hZTL6hN3Pve4' })
-        .then(currentToken => {
-          if (currentToken) {
-            console.log('FCM Token gerado:', currentToken);
+      messaging.getToken({ vapidKey: 'SUA_VAPID_KEY_AQUI' })   // ← pegue no Firebase Console → Cloud Messaging → Web configuration
+        .then(token => {
+          console.log("FCM Token:", token);
 
-            // Inscreve no topic (método correto do SDK compat)
+          // Envia token pro backend (opcional, mas útil para debug)
+          fetch(`${API_URL}?action=saveToken&token=${encodeURIComponent(token)}&nome=${encodeURIComponent(sessionStorage.getItem('userNome'))}`);
 
-
-
-
-
-
-
-
-
-
-            
-
-            // Opcional: enviar o token para o backend
-            // fetch(`${API_URL}?action=saveToken&token=${currentToken}&nome=${sessionStorage.getItem('userNome')}`);
-          } else {
-            console.log('Não foi possível obter token FCM');
-          }
+          // Inscreve no topic diretamente no cliente (mais confiável para seu caso)
+          // Se preferir fazer pelo backend, remova essas linhas e implemente lá
+          fetch('https://iid.googleapis.com/iid/v1/' + token + '/rel/topics/sala-bolao', {
+            method: 'POST',
+            headers: {
+              'Authorization': 'key=SUA_SERVER_KEY_AQUI'   // ← Server key do Firebase → Cloud Messaging
+            }
+          })
+          .then(r => {
+            if (r.ok) console.log("Inscrito no topic 'sala-bolao' com sucesso!");
+            else console.error("Falha na inscrição no topic");
+          })
+          .catch(err => console.error("Erro inscrição topic:", err));
         })
-        .catch(err => {
-          console.error('Erro ao obter token FCM:', err);
-        });
+        .catch(err => console.error("Erro getToken:", err));
     }
   });
 
-  // Recebe mensagens em foreground
+  // Recebe em foreground
   messaging.onMessage(payload => {
-    console.log('Mensagem recebida em foreground:', payload);
-    const notificationTitle = payload.notification?.title || 'Nova mensagem na sala';
-    const notificationOptions = {
-      body: payload.notification?.body || '',
-      icon: '/icon.png'  // coloque um ícone se tiver
+    console.log("Mensagem em foreground:", payload);
+    const title = payload.notification?.title || "Nova mensagem";
+    const options = {
+      body: payload.notification?.body || "",
+      icon: "/icon-192.png"
     };
-    new Notification(notificationTitle, notificationOptions);
+    new Notification(title, options);
+
+    // Seu toast customizado
+    const toast = document.getElementById('toast');
+    toast.innerText = `${title}: ${payload.notification?.body || ''}`;
+    toast.style.display = 'block';
+    setTimeout(() => toast.style.display = 'none', 5000);
   });
 }
-
-
-
-// Banner de instalação manual
-let deferredPrompt;
-
-window.addEventListener('beforeinstallprompt', (e) => {
-  // Impede o banner automático do Chrome
-  e.preventDefault();
-  deferredPrompt = e;
-  
-  // Mostra seu banner personalizado
-  const installBanner = document.getElementById('installBanner');
-  installBanner.style.display = 'flex';
-});
-
-document.getElementById('installBanner')?.querySelector('button').addEventListener('click', async () => {
-  if (deferredPrompt) {
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      console.log('PWA instalado pelo usuário');
-    }
-    deferredPrompt = null;
-    document.getElementById('installBanner').style.display = 'none';
-  }
-});
-
- // Registrar o Service Worker (obrigatório para notificações em background)
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('firebase-messaging-sw.js')  // ← ajuste o nome se for diferente
-      .then(registration => {
-        console.log('Service Worker registrado com sucesso:', registration.scope);
-      })
-      .catch(err => {
-        console.error('Falha ao registrar Service Worker:', err);
-      });
-  });
-} 
 </script>
 </body>
 </html>
