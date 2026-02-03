@@ -177,6 +177,128 @@ function fecharIframe() { document.getElementById('iframeBox').classList.add('hi
 function participarBolao() { alert('Você entrou no bolão'); }
 function exibirBolao() { alert('Bolão exibido'); }
 function logout() { sessionStorage.clear(); location.reload(); }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// =============================================
+// FIREBASE CLIENT-SIDE
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging.js";
+
+// Configuração do projeto (substitua com as informações do seu Firebase)
+const firebaseConfig = {
+  apiKey: "AIzaSyA7PTBoaKVAxXrpBNWSzbin5XGkbQBGrWY", // substitua com sua apiKey real
+  authDomain: "sala-bolao.firebaseapp.com",
+  projectId: "sala-bolao",
+  storageBucket: "sala-bolao.appspot.com",
+  messagingSenderId: "19354677995",
+  appId: "1:19354677995:web:374ae89b72107e8b0844ae",
+  measurementId: "G-XXXXXXXXXX"  // opcional
+};
+
+// Inicializa o Firebase
+const app = initializeApp(firebaseConfig);
+const messaging = getMessaging(app);
+
+// =============================================
+// Solicita permissão para notificações e inscreve no topic
+function inscreverNoTopic() {
+  console.log("Tentando inscrever no topic sala-bolao...");
+
+  getToken(messaging, { vapidKey: 'pvhHVsA80Jy8AqtM52PtxdhApalEYg_hZTL6hN3Pve4' }) // VAPID key fornecida
+    .then((currentToken) => {
+      if (currentToken) {
+        console.log("FCM Token:", currentToken);
+
+        // Inscrição no topic usando a API antiga (Server Key)
+        fetch('https://iid.googleapis.com/iid/v1/' + currentToken + '/rel/topics/sala-bolao', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'key=BKeHFoXc6yproB-mast7RU_-cBuKMZCLkV7oW3YCViflGyjktC12TgNUzB1ycOzxmHB8YfHtLl0haKHAmpCDnN4'
+          }
+        }).then(response => {
+          if (response.ok) {
+            console.log("Inscrito no topic sala-bolao com sucesso!");
+          } else {
+            console.error("Falha ao inscrever no topic");
+          }
+        });
+
+      } else {
+        console.log('Não foi possível obter token. Permissão negada?');
+      }
+    })
+    .catch((err) => {
+      console.error('Erro ao obter token FCM:', err);
+    });
+}
+
+// =============================================
+// Função de entrar na sala
+function entrarSala() {
+  document.getElementById('loginBox').classList.add('hidden');
+  document.getElementById('salaBox').classList.remove('hidden');
+  carregarSala();
+  carregarChat();
+  inscreverNoTopic();   // ← INSCRIÇÃO NO TOPIC
+}
+
+// =============================================
+// Exemplo de recebimento de mensagem em primeiro plano
+onMessage(messaging, (payload) => {
+  console.log('Mensagem recebida:', payload);
+  // Aqui você pode exibir uma notificação visual e sonora
+  const notificationTitle = payload.notification?.title || "Nova mensagem";
+  const notificationOptions = {
+    body: payload.notification?.body || "",
+    icon: payload.notification?.icon || "icon.png"
+  };
+  new Notification(notificationTitle, notificationOptions);
+});
+
+
+
+
+
+
+  
 </script>
 </body>
 </html>
