@@ -71,7 +71,10 @@ iframe{width:100%;height:350px;border:none;border-radius:12px;}
 </div>
 
 <script>
-const API_URL = 'https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec'; // atualize se necessário
+// =============================================
+// CONFIGURAÇÕES GLOBAIS
+const API_URL = 'https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec';
+
 let totalMensagens = 0;
 let carregouChat = false;
 let audioLiberado = false;
@@ -79,6 +82,8 @@ let audioLiberado = false;
 const somMensagem = new Audio('sons/beep.mp3');
 somMensagem.volume = 1;
 
+// =============================================
+// NOTIFICAÇÃO NATIVA DO NAVEGADOR
 if ("Notification" in window && Notification.permission !== "granted") {
   Notification.requestPermission();
 }
@@ -92,6 +97,8 @@ function liberarSom() {
   }).catch(() => {});
 }
 
+// =============================================
+// LOGIN
 function login() {
   liberarSom();
   const nomeEl = document.getElementById('nome');
@@ -105,9 +112,10 @@ function login() {
         sessionStorage.setItem('userNome', res.nome);
         entrarSala();
       } else {
-        msgEl.innerText = res.message;
+        msgEl.innerText = res.message || 'Acesso negado';
       }
-    }).catch(() => msgEl.innerText = 'Erro na conexão');
+    })
+    .catch(() => msgEl.innerText = 'Erro na conexão');
 }
 
 function entrarSala() {
@@ -115,15 +123,19 @@ function entrarSala() {
   document.getElementById('salaBox').classList.remove('hidden');
   carregarSala();
   carregarChat();
+  iniciarFirebaseEMensagens();   // ← aqui começa a parte do FCM
 }
 
+// =============================================
+// DASHBOARD E CHAT (mantido igual, só organizei)
 function carregarSala() {
   fetch(`${API_URL}?action=dashboard`)
     .then(r => r.json())
     .then(d => {
       document.getElementById('totalAtivos').innerText = d.totalAtivos;
       document.getElementById('listaParticipantes').innerHTML = d.participantes.join('<br>');
-    });
+    })
+    .catch(err => console.log('Erro ao carregar dashboard', err));
 }
 
 function carregarChat() {
@@ -136,13 +148,16 @@ function carregarChat() {
         msgs.forEach(m => {
           chatBox.innerHTML += `<div class="chat-msg"><span class="chat-name">${m.nome}:</span> ${m.msg}</div>`;
         });
+
         if (carregouChat && msgs.length > totalMensagens) {
-          notificar(msgs[msgs.length-1]);
+          notificar(msgs[msgs.length - 1]);
         }
+
         carregouChat = true;
         totalMensagens = msgs.length;
         chatBox.scrollTop = chatBox.scrollHeight;
-      });
+      })
+      .catch(err => console.log('Erro ao carregar chat', err));
   }, 3000);
 }
 
@@ -151,10 +166,12 @@ function notificar(msg) {
     somMensagem.currentTime = 0;
     somMensagem.play().catch(() => {});
   }
-  if (navigator.vibrate) navigator.vibrate([200,100,200]);
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
 
   if (Notification.permission === "granted" && document.hidden) {
-    new Notification("💬 Nova mensagem", { body: `${msg.nome}: ${msg.msg}` });
+    new Notification("💬 Nova mensagem", {
+      body: `${msg.nome}: ${msg.msg}`
+    });
   }
 
   const toast = document.getElementById('toast');
@@ -168,137 +185,90 @@ function enviarMsg() {
   if (!input.value.trim()) return;
 
   const nome = sessionStorage.getItem('userNome');
-  fetch(`${API_URL}?action=sendChat&nome=${encodeURIComponent(nome)}&msg=${encodeURIComponent(input.value)}`);
-  input.value = '';
+  fetch(`${API_URL}?action=sendChat&nome=${encodeURIComponent(nome)}&msg=${encodeURIComponent(input.value)}`)
+    .then(() => input.value = '')
+    .catch(err => console.log('Erro ao enviar mensagem', err));
 }
 
+// =============================================
+// FUNÇÕES AUXILIARES
 function abrirIframe() { document.getElementById('iframeBox').classList.remove('hidden'); }
 function fecharIframe() { document.getElementById('iframeBox').classList.add('hidden'); }
 function participarBolao() { alert('Você entrou no bolão'); }
 function exibirBolao() { alert('Bolão exibido'); }
 function logout() { sessionStorage.clear(); location.reload(); }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // =============================================
-// FIREBASE CLIENT-SIDE
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging.js";
-
-// Configuração do projeto (substitua com as informações do seu Firebase)
-const firebaseConfig = {
-  apiKey: "AIzaSyA7PTBoaKVAxXrpBNWSzbin5XGkbQBGrWY", // substitua com sua apiKey real
-  authDomain: "sala-bolao.firebaseapp.com",
-  projectId: "sala-bolao",
-  storageBucket: "sala-bolao.appspot.com",
-  messagingSenderId: "19354677995",
-  appId: "1:19354677995:web:374ae89b72107e8b0844ae",
-  measurementId: "G-C09QTEFN5L"  // opcional
-};
-
-// Inicializa o Firebase
-const app = initializeApp(firebaseConfig);
-const messaging = getMessaging(app);
-
-// =============================================
-// Solicita permissão para notificações e inscreve no topic
-function inscreverNoTopic() {
-  console.log("Tentando inscrever no topic sala-bolao...");
-
-  getToken(messaging, { vapidKey: 'pvhHVsA80Jy8AqtM52PtxdhApalEYg_hZTL6hN3Pve4' }) // VAPID key fornecida
-    .then((currentToken) => {
-      if (currentToken) {
-        console.log("FCM Token:", currentToken);
-
-        // Inscrição no topic usando a API antiga (Server Key)
-        fetch('https://iid.googleapis.com/iid/v1/' + currentToken + '/rel/topics/sala-bolao', {
-          method: 'POST',
-          headers: {
-            'Authorization': 'key=BKeHFoXc6yproB-mast7RU_-cBuKMZCLkV7oW3YCViflGyjktC12TgNUzB1ycOzxmHB8YfHtLl0haKHAmpCDnN4'
-          }
-        }).then(response => {
-          if (response.ok) {
-            console.log("Inscrito no topic sala-bolao com sucesso!");
-          } else {
-            console.error("Falha ao inscrever no topic");
-          }
-        });
-
-      } else {
-        console.log('Não foi possível obter token. Permissão negada?');
-      }
-    })
-    .catch((err) => {
-      console.error('Erro ao obter token FCM:', err);
-    });
-}
-
-// =============================================
-// Função de entrar na sala
-function entrarSala() {
-  document.getElementById('loginBox').classList.add('hidden');
-  document.getElementById('salaBox').classList.remove('hidden');
-  carregarSala();
-  carregarChat();
-  inscreverNoTopic();   // ← INSCRIÇÃO NO TOPIC
-}
-
-// =============================================
-// Exemplo de recebimento de mensagem em primeiro plano
-onMessage(messaging, (payload) => {
-  console.log('Mensagem recebida:', payload);
-  // Aqui você pode exibir uma notificação visual e sonora
-  const notificationTitle = payload.notification?.title || "Nova mensagem";
-  const notificationOptions = {
-    body: payload.notification?.body || "",
-    icon: payload.notification?.icon || "icon.png"
+// FIREBASE – CLIENT SIDE (corrigido)
+function iniciarFirebaseEMensagens() {
+  // Carrega o Firebase de forma compatível (sem type="module")
+  const script = document.createElement('script');
+  script.src = "https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js";
+  script.onload = () => {
+    const messagingScript = document.createElement('script');
+    messagingScript.src = "https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js";
+    messagingScript.onload = inicializarFirebase;
+    document.head.appendChild(messagingScript);
   };
-  new Notification(notificationTitle, notificationOptions);
-});
+  document.head.appendChild(script);
+}
 
+function inicializarFirebase() {
+  const firebaseConfig = {
+    apiKey:            "AIzaSyA7PTBoaKVAxXrpBNWSzbin5XGkbQBGrWY",
+    authDomain:        "sala-bolao.firebaseapp.com",
+    projectId:         "sala-bolao",
+    storageBucket:     "sala-bolao.appspot.com",
+    messagingSenderId: "19354677995",
+    appId:             "1:19354677995:web:374ae89b72107e8b0844ae",
+    measurementId:     "G-C09QTEFN5L"
+  };
 
+  firebase.initializeApp(firebaseConfig);
+  const messaging = firebase.messaging();
 
+  // Solicita permissão e obtém token + inscrição no topic
+  Notification.requestPermission().then(permission => {
+    if (permission === 'granted') {
+      console.log('Permissão de notificação concedida');
 
+      messaging.getToken({ vapidKey: 'pvhHVsA80Jy8AqtM52PtxdhApalEYg_hZTL6hN3Pve4' })
+        .then(currentToken => {
+          if (currentToken) {
+            console.log('FCM Token gerado:', currentToken);
 
+            // Inscreve no topic (método correto do SDK compat)
+            messaging.subscribeToTopic(currentToken, 'sala-bolao')
+              .then(() => {
+                console.log('Inscrito com sucesso no topic: sala-bolao');
+              })
+              .catch(err => {
+                console.error('Erro ao inscrever no topic:', err);
+              });
 
-  
+            // Opcional: enviar o token para o backend
+            // fetch(`${API_URL}?action=saveToken&token=${currentToken}&nome=${sessionStorage.getItem('userNome')}`);
+          } else {
+            console.log('Não foi possível obter token FCM');
+          }
+        })
+        .catch(err => {
+          console.error('Erro ao obter token FCM:', err);
+        });
+    }
+  });
+
+  // Recebe mensagens em foreground
+  messaging.onMessage(payload => {
+    console.log('Mensagem recebida em foreground:', payload);
+    const notificationTitle = payload.notification?.title || 'Nova mensagem na sala';
+    const notificationOptions = {
+      body: payload.notification?.body || '',
+      icon: '/icon.png'  // coloque um ícone se tiver
+    };
+    new Notification(notificationTitle, notificationOptions);
+  });
+}
 </script>
 </body>
 </html>
