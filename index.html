@@ -7,6 +7,8 @@
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#00c853">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Firebase -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
     import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging.js";
@@ -24,9 +26,55 @@
     const app = initializeApp(firebaseConfig);
     const messaging = getMessaging(app);
 
-    window.messaging = messaging; // para acessar em funções globais
+    window.messaging = messaging;
     window.getToken = getToken;
     window.onMessage = onMessage;
+
+    const API_URL = 'https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec';
+
+    // Permissão de notificações
+    Notification.requestPermission().then(p => {
+      if (p === 'granted') {
+        console.log('Permissão concedida');
+      } else {
+        console.warn('Permissão negada');
+      }
+    });
+
+    // Recebe notificações em foreground
+    window.onMessage(messaging, payload => {
+      console.log('Mensagem FCM recebida:', payload);
+      const title = payload.notification?.title || "Nova mensagem";
+      const body = payload.notification?.body || payload.data?.mensagem || "";
+      new Notification(title, { body, icon: 'icon.png' });
+
+      const audio = new Audio('alerta.mp3'); // arquivo de som
+      audio.play().catch(err => console.error('Erro ao tocar som:', err));
+    });
+
+    // Registrar token no backend
+    function inscreverNoTopic() {
+      getToken(messaging, { vapidKey: 'pvhHVsA80Jy8AqtM52PtxdhApalEYg_hZTL6hN3Pve4' })
+        .then(token => {
+          if (!token) return console.warn('Token FCM não obtido');
+          console.log('Token FCM:', token);
+          fetch(`${API_URL}?action=registrarToken`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: sessionStorage.getItem('userId'),
+              nome: sessionStorage.getItem('userNome'),
+              fcmToken: token
+            })
+          })
+          .then(r => r.json())
+          .then(res => console.log('Token registrado:', res))
+          .catch(err => console.error('Erro ao registrar token:', err));
+        })
+        .catch(err => console.error('Erro getToken:', err));
+    }
+
+    window.inscreverNoTopic = inscreverNoTopic;
   </script>
 
   <style>
@@ -99,23 +147,18 @@
 
 <script>
 // =============================================
-// Variáveis globais
-// =============================================
-const API_URL = 'https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec';
-let deferredPrompt;
-
 // SERVICE WORKER
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(err => console.error('Erro ao registrar SW:', err));
 }
 
 // BANNER INSTALAR
-window.addEventListener('beforeinstallprompt', (e) => {
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   deferredPrompt = e;
   document.getElementById('installBanner').style.display = 'flex';
 });
-
 function instalarApp() {
   document.getElementById('installBanner').style.display = 'none';
   if (deferredPrompt) {
@@ -123,23 +166,15 @@ function instalarApp() {
     deferredPrompt.userChoice.then(() => deferredPrompt = null);
   }
 }
-
-window.addEventListener('appinstalled', () => {
-  document.getElementById('installBanner').style.display = 'none';
-});
+window.addEventListener('appinstalled', () => document.getElementById('installBanner').style.display = 'none');
 
 // =============================================
 // LOGIN
-// =============================================
 function login() {
   const nome = document.getElementById('nome').value.trim();
   const telefone = document.getElementById('telefone').value.trim();
   const msg = document.getElementById('msg');
-
-  if (!nome || !telefone) {
-    msg.innerText = "Preencha nome e telefone";
-    return;
-  }
+  if (!nome || !telefone) { msg.innerText = "Preencha nome e telefone"; return; }
 
   fetch(`${API_URL}?action=loginSala&nome=${encodeURIComponent(nome)}&telefone=${encodeURIComponent(telefone)}`)
     .then(r => r.json())
@@ -148,14 +183,8 @@ function login() {
         sessionStorage.setItem('userId', res.id);
         sessionStorage.setItem('userNome', res.nome);
         entrarSala();
-      } else {
-        msg.innerText = res.message || "Acesso negado";
-      }
-    })
-    .catch(err => {
-      msg.innerText = "Erro de conexão";
-      console.error(err);
-    });
+      } else msg.innerText = res.message || "Acesso negado";
+    }).catch(err => { msg.innerText = "Erro de conexão"; console.error(err); });
 }
 
 function entrarSala() {
@@ -167,51 +196,7 @@ function entrarSala() {
 }
 
 // =============================================
-// FCM - Notificações
-// =============================================
-function inscreverNoTopic() {
-  console.log("Obtendo token FCM...");
-
-  getToken(window.messaging, { vapidKey: 'pvhHVsA80Jy8AqtM52PtxdhApalEYg_hZTL6hN3Pve4' })
-    .then(currentToken => {
-      if (currentToken) {
-        console.log("Token FCM:", currentToken);
-
-        fetch(`${API_URL}?action=registrarToken`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: sessionStorage.getItem('userId'),
-            nome: sessionStorage.getItem('userNome'),
-            fcmToken: currentToken
-          })
-        })
-        .then(r => r.json())
-        .then(res => {
-          if (res.success) console.log("Token registrado com sucesso");
-          else console.error("Falha ao registrar token:", res.message);
-        })
-        .catch(err => console.error("Erro ao enviar token:", err));
-      } else {
-        console.log('Permissão de notificação negada');
-      }
-    })
-    .catch(err => console.error('Erro getToken:', err));
-}
-
-window.onMessage(window.messaging, (payload) => {
-  console.log('Mensagem recebida em foreground:', payload);
-  const title = payload.notification?.title || "Nova mensagem na sala";
-  const options = {
-    body: payload.notification?.body || payload.data?.mensagem || "",
-    icon: "icon.png"
-  };
-  new Notification(title, options);
-});
-
-// =============================================
-// OUTRAS FUNÇÕES
-// =============================================
+// SALA / CHAT
 function carregarSala() {
   fetch(`${API_URL}?action=dashboard`)
     .then(r => r.json())
@@ -228,9 +213,7 @@ function carregarChat() {
       .then(msgs => {
         const chatBox = document.getElementById('chatBox');
         chatBox.innerHTML = '';
-        msgs.forEach(m => {
-          chatBox.innerHTML += `<div class="chat-msg"><span class="chat-name">${m.nome}:</span> ${m.msg}</div>`;
-        });
+        msgs.forEach(m => chatBox.innerHTML += `<div class="chat-msg"><span class="chat-name">${m.nome}:</span> ${m.msg}</div>`);
         chatBox.scrollTop = chatBox.scrollHeight;
       });
   }, 3000);
@@ -240,7 +223,6 @@ function enviarMsg() {
   const input = document.getElementById('chatMsg');
   const msg = input.value.trim();
   if (!msg) return;
-
   fetch(`${API_URL}?action=sendChat&nome=${encodeURIComponent(sessionStorage.getItem('userNome'))}&msg=${encodeURIComponent(msg)}`);
   input.value = '';
 }
@@ -251,7 +233,7 @@ function participarBolao() { alert('Você entrou no bolão'); }
 function exibirBolao() { alert('Bolão exibido'); }
 function logout() { sessionStorage.clear(); location.reload(); }
 
-// Auto-login se já tiver sessão
+// Auto-login
 if (sessionStorage.getItem('userId')) entrarSala();
 </script>
 </body>
