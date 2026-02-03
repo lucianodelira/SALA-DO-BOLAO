@@ -112,13 +112,11 @@ iframe{
 
 <body>
 
-<!-- 📲 BANNER INSTALAR -->
 <div id="installBanner">
   <span>📲 Baixar App</span>
   <button onclick="instalarApp()">Instalar</button>
 </div>
 
-<!-- LOGIN -->
 <div class="container" id="loginBox">
   <h2>Entrar na Sala</h2>
   <p class="subtitle">Acesso exclusivo</p>
@@ -128,7 +126,6 @@ iframe{
   <p id="msg" style="color:#ff6b6b;text-align:center"></p>
 </div>
 
-<!-- SALA -->
 <div class="container hidden" id="salaBox">
 
   <div class="info-card">
@@ -168,22 +165,29 @@ iframe{
 <script>
 const API_URL='https://script.google.com/macros/s/AKfycbz4kDF2DyJxIy7kH7-BTtkPhwFLDyXHAXiMVxlUnRdViYOjz9LUbh9AGJSLxpODG4_vMw/exec';
 
-let deferredPrompt;
 let totalMensagens = 0;
+let audioLiberado = false;
 
-// 🔊 SOM
+/* 🔊 SOM */
 const somMensagem = new Audio('sons/beep.mp3');
 somMensagem.volume = 1.0;
 
-// 🔔 PERMISSÃO NOTIFICAÇÃO
+/* 🔔 PERMISSÃO NOTIFICAÇÃO */
 if ("Notification" in window && Notification.permission !== "granted") {
   Notification.requestPermission();
 }
 
-/* SERVICE WORKER */
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
+/* 🔓 LIBERAR SOM COM 1 INTERAÇÃO */
+function liberarSom(){
+  if(audioLiberado) return;
+  somMensagem.play().then(()=>{
+    somMensagem.pause();
+    somMensagem.currentTime = 0;
+    audioLiberado = true;
+  }).catch(()=>{});
 }
+document.addEventListener('click', liberarSom, { once:true });
+document.addEventListener('touchstart', liberarSom, { once:true });
 
 /* LOGIN */
 function login(){
@@ -191,7 +195,6 @@ function login(){
   .then(r=>r.json())
   .then(res=>{
     if(res.success){
-      sessionStorage.setItem('userId',res.id);
       sessionStorage.setItem('userNome',res.nome);
       entrarSala();
     } else msg.innerText=res.message;
@@ -214,7 +217,7 @@ function carregarSala(){
   });
 }
 
-/* CHAT COM SOM + NOTIFICAÇÃO */
+/* CHAT */
 function carregarChat(){
   setInterval(()=>{
     fetch(`${API_URL}?action=getChat`)
@@ -228,8 +231,8 @@ function carregarChat(){
           </div>`;
       });
 
-      if (msgs.length > totalMensagens && totalMensagens !== 0) {
-        tocarNotificacao(msgs[msgs.length - 1]);
+      if(msgs.length > totalMensagens && totalMensagens !== 0){
+        notificar(msgs[msgs.length-1]);
       }
 
       totalMensagens = msgs.length;
@@ -238,15 +241,21 @@ function carregarChat(){
   },3000);
 }
 
-function tocarNotificacao(msg){
-  // 🔊 som
-  somMensagem.currentTime = 0;
-  somMensagem.play().catch(()=>{});
+/* 🔔🔊📳 */
+function notificar(msg){
+  if(audioLiberado){
+    somMensagem.currentTime = 0;
+    somMensagem.play().catch(()=>{});
+  }
 
-  // 🔔 notificação
-  if (Notification.permission === "granted") {
-    new Notification("💬 Nova mensagem no chat", {
-      body: `${msg.nome}: ${msg.msg}`
+  if(navigator.vibrate){
+    navigator.vibrate([200,100,200]);
+  }
+
+  if(Notification.permission === "granted"){
+    new Notification("💬 Nova mensagem no chat",{
+      body:`${msg.nome}: ${msg.msg}`,
+      vibrate:[200,100,200]
     });
   }
 }
@@ -262,8 +271,6 @@ function fecharIframe(){iframeBox.classList.add('hidden')}
 function participarBolao(){alert('Você entrou no bolão')}
 function exibirBolao(){alert('Bolão exibido')}
 function logout(){sessionStorage.clear();location.reload()}
-
-if(sessionStorage.getItem('userId')) entrarSala();
 </script>
 
 </body>
