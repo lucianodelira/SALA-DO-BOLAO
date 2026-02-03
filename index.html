@@ -212,6 +212,26 @@ function participarBolao(){alert('Você entrou no bolão');}
 function exibirBolao(){alert('Bolão exibido');}
 function logout(){sessionStorage.clear(); location.reload();}
 if(sessionStorage.getItem('userId')) entrarSala();
+
+
+
+
+// Receber mensagens em foreground
+window.onMessage(window.messaging, payload => {
+  const title = payload.notification?.title || "Nova mensagem";
+  const body = payload.notification?.body || payload.data?.mensagem || "";
+
+  new Notification(title, { body, icon: 'icon.png' });
+
+  // Som de alerta
+  const audio = new Audio('alerta.mp3');
+  audio.play().catch(err => console.warn('Erro tocar som:', err));
+});
+
+
+
+
+  
 </script>
 </body>
 </html>
